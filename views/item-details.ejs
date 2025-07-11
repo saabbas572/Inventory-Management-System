@@ -1,0 +1,22 @@
+<%- include('partials/header', { title: 'Item Details' }) %>
+
+<div class="container mt-4">
+  <h2>Item Details</h2>
+  <hr>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title"><%= item.itemName %> (<%= item.itemNumber %>)</h5>
+      <p class="card-text"><strong>Category:</strong> <%= item.category %></p>
+      <p class="card-text"><strong>Description:</strong> <%= item.description || 'N/A' %></p>
+      <p class="card-text"><strong>Status:</strong> <%= item.status %></p>
+      <p class="card-text"><strong>Stock Available:</strong> <%= item.stock %></p>
+      <p class="card-text"><strong>Created At:</strong> <%= new Date(item.createdAt).toLocaleString() %></p>
+      <p class="card-text"><strong>Updated At:</strong> <%= new Date(item.updatedAt).toLocaleString() %></p>
+
+      <a href="/items" class="btn btn-secondary mt-3">Back to Items</a>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

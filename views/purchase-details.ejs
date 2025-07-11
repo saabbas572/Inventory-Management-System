@@ -1,0 +1,17 @@
+<%- include('partials/header', { title: 'Purchase Details' }) %>
+
+<div class="container mt-4">
+  <h2>Purchase Details - <%= purchase.purchaseId %></h2>
+  <ul class="list-group">
+    <li class="list-group-item"><strong>Item:</strong> <%= purchase.itemName %> (<%= purchase.itemNumber %>)</li>
+    <li class="list-group-item"><strong>Vendor:</strong> <%= purchase.vendorName %></li>
+    <li class="list-group-item"><strong>Date:</strong> <%= new Date(purchase.purchaseDate).toLocaleDateString() %></li>
+    <li class="list-group-item"><strong>Quantity:</strong> <%= purchase.quantity %></li>
+    <li class="list-group-item"><strong>Unit Price:</strong> $<%= purchase.unitPrice.toFixed(2) %></li>
+    <li class="list-group-item"><strong>Total Cost:</strong> $<%= purchase.totalCost.toFixed(2) %></li>
+  </ul>
+  <a href="/purchases" class="btn btn-secondary mt-3">Back to Purchases</a>
+  <a href="/purchases/<%= purchase._id %>/edit" class="btn btn-primary mt-3">Edit Purchase</a>
+</div>
+
+<%- include('partials/footer') %>

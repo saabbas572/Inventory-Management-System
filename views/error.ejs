@@ -1,0 +1,26 @@
+<%- include('partials/header', { title: 'Error' }) %>
+
+<div class="container mt-4">
+  <div class="card border-danger">
+    <div class="card-header bg-danger text-white">
+      <h2>Error</h2>
+    </div>
+    <div class="card-body">
+      <% if (typeof error !== 'undefined') { %>
+        <div class="alert alert-danger">
+          <h4 class="alert-heading">An error occurred</h4>
+          <% if (error.message) { %>
+            <p><%= error.message %></p>
+          <% } %>
+          <% if (process.env.NODE_ENV === 'development' && error.stack) { %>
+            <hr>
+            <pre class="mb-0"><%= error.stack %></pre>
+          <% } %>
+        </div>
+      <% } %>
+      <a href="/" class="btn btn-primary">Return to Home</a>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

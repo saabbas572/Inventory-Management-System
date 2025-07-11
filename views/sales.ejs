@@ -1,0 +1,184 @@
+<%- include('partials/header') %>
+
+<div class="container">
+  <h2>Sale Details</h2>
+  
+  <% if (errorMessage.length > 0) { %>
+    <div class="alert alert-danger">
+      <% errorMessage.forEach(msg => { %>
+        <p><%= msg %></p>
+      <% }) %>
+    </div>
+  <% } %>
+  
+  <% if (successMessage.length > 0) { %>
+    <div class="alert alert-success">
+      <% successMessage.forEach(msg => { %>
+        <p><%= msg %></p>
+      <% }) %>
+    </div>
+  <% } %>
+  
+  <form id="saleForm" method="POST" action="/sales">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">  <!-- CSRF token -->
+    <input type="hidden" id="saleId" name="id">
+    
+    <div class="form-row">
+      <div class="form-group col-md-4">
+        <label for="itemNumber">Item Number*</label>
+        <select class="form-control" id="itemNumber" name="itemNumber" required>
+          <option value="">Select Item</option>
+          <% items.forEach(item => { %>
+            <option value="<%= item.itemNumber %>" data-name="<%= item.itemName %>" data-price="<%= item.unitPrice %>"><%= item.itemNumber %> - <%= item.itemName %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="form-group col-md-4">
+        <label for="customerId">Customer ID*</label>
+        <select class="form-control" id="customerId" name="customerId" required>
+          <option value="">Select Customer</option>
+          <% customers.forEach(customer => { %>
+            <option value="<%= customer._id %>" data-name="<%= customer.fullName %>"><%= customer.customerId %> - <%= customer.fullName %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="form-group col-md-4">
+        <label for="saleDate">Sale Date*</label>
+        <input type="date" class="form-control" id="saleDate" name="saleDate" required>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group col-md-6">
+        <label for="itemName">Item Name*</label>
+        <input type="text" class="form-control" id="itemName" name="itemName" readonly required>
+      </div>
+      <div class="form-group col-md-6">
+        <label for="customerName">Customer Name*</label>
+        <input type="text" class="form-control" id="customerName" name="customerName" readonly required>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group col-md-4">
+        <label for="quantity">Quantity*</label>
+        <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+      </div>
+      <div class="form-group col-md-4">
+        <label for="unitPrice">Unit Price*</label>
+        <input type="number" class="form-control" id="unitPrice" name="unitPrice" min="0" step="0.01" required>
+      </div>
+      <div class="form-group col-md-4">
+        <label for="total">Total</label>
+        <input type="number" class="form-control" id="total" name="total" readonly>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <button type="submit" class="btn btn-primary" id="addBtn">Add Sale</button>
+      <button type="button" class="btn btn-secondary" id="updateBtn" style="display:none;">Update</button>
+      <button type="reset" class="btn btn-light">Clear</button>
+    </div>
+  </form>
+  
+  <hr>
+  
+  <h3>Sale List</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Sale ID</th>
+        <th>Date</th>
+        <th>Item</th>
+        <th>Customer</th>
+        <th>Quantity</th>
+        <th>Unit Price</th>
+        <th>Total</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% sales.forEach(sale => { %>
+        <tr>
+          <td><%= sale.saleId %></td>
+          <td><%= sale.saleDate.toISOString().split('T')[0] %></td>
+          <td><%= sale.itemName %></td>
+          <td><%= sale.customerName %></td>
+          <td><%= sale.quantity %></td>
+          <td><%= sale.unitPrice.toFixed(2) %></td>
+          <td><%= sale.total.toFixed(2) %></td>
+          <td>
+            <button class="btn btn-sm btn-info edit-btn" data-id="<%= sale._id %>">Edit</button>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function calculateTotal() {
+    const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+    const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
+    document.getElementById('total').value = (quantity * unitPrice).toFixed(2);
+  }
+  
+  document.getElementById('quantity').addEventListener('input', calculateTotal);
+  document.getElementById('unitPrice').addEventListener('input', calculateTotal);
+  
+  document.getElementById('itemNumber').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    document.getElementById('itemName').value = selectedOption.getAttribute('data-name') || '';
+    document.getElementById('unitPrice').value = selectedOption.getAttribute('data-price') || 0;
+    calculateTotal();
+  });
+  
+  document.getElementById('customerId').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    document.getElementById('customerName').value = selectedOption.getAttribute('data-name') || '';
+  });
+  
+  // Set today's date as default
+  document.getElementById('saleDate').valueAsDate = new Date();
+  
+  // Handle edit buttons
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const saleId = this.getAttribute('data-id');
+      fetch(`/sales/${saleId}`)
+        .then(res => res.json())
+        .then(sale => {
+          document.getElementById('saleId').value = sale._id;
+          document.getElementById('itemNumber').value = sale.itemNumber;
+          document.getElementById('customerId').value = sale.customerId;
+          document.getElementById('saleDate').value = sale.saleDate.split('T')[0];
+          document.getElementById('itemName').value = sale.itemName;
+          document.getElementById('customerName').value = sale.customerName;
+          document.getElementById('quantity').value = sale.quantity;
+          document.getElementById('unitPrice').value = sale.unitPrice;
+          document.getElementById('total').value = sale.total;
+          
+          document.getElementById('addBtn').style.display = 'none';
+          document.getElementById('updateBtn').style.display = 'inline-block';
+        });
+    });
+  });
+  
+  document.getElementById('updateBtn').addEventListener('click', function() {
+    const form = document.getElementById('saleForm');
+    form.action = `/sales/${document.getElementById('saleId').value}`;
+    
+    let methodInput = document.querySelector('input[name="_method"]');
+    if (!methodInput) {
+      methodInput = document.createElement('input');
+      methodInput.type = 'hidden';
+      methodInput.name = '_method';
+      form.appendChild(methodInput);
+    }
+    methodInput.value = 'PUT';
+    
+    form.submit();
+  });
+</script>
+
+<%- include('partials/footer') %>

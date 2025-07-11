@@ -1,0 +1,164 @@
+<%- include('partials/header') %>
+
+<div class="container mt-4">
+  <h2>Vendor Details</h2>
+
+  <% if (successMessage && successMessage.length > 0) { %>
+    <div class="alert alert-success"><%= successMessage[0] %></div>
+  <% } %>
+
+  <% if (errorMessage && errorMessage.length > 0) { %>
+    <div class="alert alert-danger"><%= errorMessage[0] %></div>
+  <% } %>
+
+  <form id="vendorForm" method="POST" action="/vendors">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" id="vendorId" name="id">
+
+    <div class="form-group">
+      <label for="fullName">Full Name*</label>
+      <input type="text" class="form-control" id="fullName" name="fullName" required>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group col-md-6">
+        <label for="status">Status</label>
+        <select class="form-control" id="status" name="status">
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="form-group col-md-6">
+        <label for="email">Email</label>
+        <input type="email" class="form-control" id="email" name="email">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group col-md-6">
+        <label for="phoneMobile">Phone (mobile)*</label>
+        <input type="text" class="form-control" id="phoneMobile" name="phoneMobile" required>
+      </div>
+      <div class="form-group col-md-6">
+        <label for="phone2">Phone 2</label>
+        <input type="text" class="form-control" id="phone2" name="phone2">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="address">Address*</label>
+      <input type="text" class="form-control" id="address" name="address" required>
+    </div>
+
+    <div class="form-group">
+      <label for="address2">Address 2</label>
+      <input type="text" class="form-control" id="address2" name="address2">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group col-md-6">
+        <label for="city">City</label>
+        <input type="text" class="form-control" id="city" name="city">
+      </div>
+      <div class="form-group col-md-6">
+        <label for="district">District</label>
+        <input type="text" class="form-control" id="district" name="district">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <button type="submit" class="btn btn-primary" id="addBtn">Add Vendor</button>
+      <button type="button" class="btn btn-secondary" id="updateBtn" style="display:none;">Update</button>
+      <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;">Delete</button>
+      <button type="reset" class="btn btn-light">Clear</button>
+    </div>
+  </form>
+
+  <hr>
+
+  <h3>Vendor List</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Full Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% vendors.forEach(vendor => { %>
+        <tr>
+          <td><%= vendor.fullName %></td>
+          <td><%= vendor.email %></td>
+          <td><%= vendor.phoneMobile %></td>
+          <td><%= vendor.status %></td>
+          <td>
+            <button class="btn btn-sm btn-info edit-btn" data-id="<%= vendor._id %>">Edit</button>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  // Edit vendor - fill form and switch buttons
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const vendorId = btn.getAttribute('data-id');
+      fetch(`/vendors/${vendorId}`, { headers: { 'Accept': 'application/json' } })
+        .then(res => res.json())
+        .then(vendor => {
+          document.getElementById('vendorId').value = vendor._id;
+          document.getElementById('fullName').value = vendor.fullName;
+          document.getElementById('status').value = vendor.status;
+          document.getElementById('email').value = vendor.email || '';
+          document.getElementById('phoneMobile').value = vendor.phoneMobile;
+          document.getElementById('phone2').value = vendor.phone2 || '';
+          document.getElementById('address').value = vendor.address;
+          document.getElementById('address2').value = vendor.address2 || '';
+          document.getElementById('city').value = vendor.city || '';
+          document.getElementById('district').value = vendor.district || '';
+
+          // Show update and delete buttons; hide add button
+          document.getElementById('addBtn').style.display = 'none';
+          document.getElementById('updateBtn').style.display = 'inline-block';
+          document.getElementById('deleteBtn').style.display = 'inline-block';
+
+          // Change form action to update URL
+          document.getElementById('vendorForm').action = `/vendors/${vendor._id}`;
+        });
+    });
+  });
+
+  // Update vendor form submit
+  document.getElementById('updateBtn').addEventListener('click', () => {
+    document.getElementById('vendorForm').submit();
+  });
+
+  // Delete vendor with CSRF token
+  document.getElementById('deleteBtn').addEventListener('click', () => {
+    if (!confirm('Are you sure you want to delete this vendor?')) return;
+
+    const vendorId = document.getElementById('vendorId').value;
+    if (!vendorId) return alert('No vendor selected.');
+
+    // Create a form to send POST for delete
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/vendors/delete/${vendorId}`;
+
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = '<%= csrfToken %>';
+    form.appendChild(csrfInput);
+
+    document.body.appendChild(form);
+    form.submit();
+  });
+</script>
+
+<%- include('partials/footer') %>

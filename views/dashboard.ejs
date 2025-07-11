@@ -1,0 +1,223 @@
+<%- include('partials/header') %>
+
+<div class="container mt-4">
+  <h1>Dashboard</h1>
+
+  <!-- Flash messages -->
+  <% if (successMessage && successMessage.length > 0) { %>
+    <div class="alert alert-success"><%= successMessage[0] %></div>
+  <% } %>
+  <% if (errorMessage && errorMessage.length > 0) { %>
+    <div class="alert alert-danger"><%= errorMessage[0] %></div>
+  <% } %>
+
+  <!-- Summary Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card text-white bg-primary mb-3">
+        <div class="card-header">Total Purchase Cost (Recent)</div>
+        <div class="card-body">
+          <h4>$<%= typeof totalCost !== 'undefined' ? totalCost.toFixed(2) : '0.00' %></h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-white bg-success mb-3">
+        <div class="card-header">Total Sales Revenue (Recent)</div>
+        <div class="card-body">
+          <h4>$<%= typeof totalRevenue !== 'undefined' ? totalRevenue.toFixed(2) : '0.00' %></h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-white <%= profit >= 0 ? 'bg-success' : 'bg-danger' %> mb-3">
+        <div class="card-header">Profit / Loss (Recent)</div>
+        <div class="card-body">
+          <h4>
+            $<%= typeof profit !== 'undefined' ? profit.toFixed(2) : '0.00' %>
+            <% if (profit < 0) { %><small>(Loss)</small><% } else { %><small>(Profit)</small><% } %>
+          </h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Purchases -->
+  <h3>Recent Purchases</h3>
+  <table class="table table-striped table-bordered">
+    <thead class="table-primary">
+      <tr>
+        <th>Date</th>
+        <th>Product</th>
+        <th>Vendor</th>
+        <th>Quantity</th>
+        <th>Cost Price</th>
+        <th>Total Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!recentPurchases || recentPurchases.length === 0) { %>
+        <tr><td colspan="6" class="text-center">No recent purchases</td></tr>
+      <% } else { %>
+        <% recentPurchases.forEach(p => { %>
+          <tr>
+            <td><%= new Date(p.purchaseDate).toLocaleDateString() %></td>
+            <td><%= p.itemName || 'N/A' %></td>
+            <td><%= p.vendor ? p.vendor.fullName : 'N/A' %></td>
+            <td><%= p.quantity %></td>
+            <td>$<%= p.unitPrice.toFixed(2) %></td>
+            <td>$<%= (p.quantity * p.unitPrice).toFixed(2) %></td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+
+  <!-- Recent Sales -->
+  <h3>Recent Sales</h3>
+  <table class="table table-striped table-bordered">
+    <thead class="table-success">
+      <tr>
+        <th>Date</th>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Sale Price</th>
+        <th>Total Revenue</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!recentSales || recentSales.length === 0) { %>
+        <tr><td colspan="5" class="text-center">No recent sales</td></tr>
+      <% } else { %>
+        <% recentSales.forEach(s => { %>
+          <tr>
+            <td><%= new Date(s.saleDate).toLocaleDateString() %></td>
+            <td><%= s.itemName || (s.item ? s.item.name : 'N/A') %></td>
+            <td><%= s.quantity %></td>
+            <td>$<%= s.unitPrice ? s.unitPrice.toFixed(2) : '0.00' %></td>
+            <td>$<%= (s.quantity * s.unitPrice).toFixed(2) %></td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+
+<!-- In your EJS template -->
+<div class="row">
+  <div class="col-md-6">
+    <h3>Profit Distribution</h3>
+    <canvas id="profitPieChart" width="400" height="400"></canvas>
+    <div id="profitAnalysis" class="mt-3 alert alert-info"></div>
+  </div>
+  <div class="col-md-6">
+    <h3>Sales Composition</h3>
+    <canvas id="salesDoughnutChart" width="400" height="400"></canvas>
+    <div id="salesAnalysis" class="mt-3 alert alert-info"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    // Debugging: Check if data exists
+    console.log('Profit Data:', <%- JSON.stringify(profitLossSummary) %>);
+    console.log('Sales Data:', <%- JSON.stringify(recentSales) %>);
+
+    // 1. Profit Pie Chart
+    const profitCtx = document.getElementById('profitPieChart');
+    if (profitCtx) {
+      const profitData = <%- JSON.stringify(profitLossSummary || []) %>;
+      const positiveItems = profitData.filter(item => item.profitLoss > 0);
+      
+      if (positiveItems.length > 0) {
+        new Chart(profitCtx, {
+          type: 'pie',
+          data: {
+            labels: positiveItems.map(item => item.itemName),
+            datasets: [{
+              data: positiveItems.map(item => item.profitLoss),
+              backgroundColor: [
+                '#4bc0c0', '#36a2eb', '#ffcd56', '#9966ff', '#ff9f40'
+              ]
+            }]
+          },
+          options: {
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const value = ctx.raw || 0;
+                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                    const percent = (value / total * 100).toFixed(1);
+                    return `${ctx.label}: $${value.toFixed(2)} (${percent}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+        
+        // Analysis text
+        const totalProfit = positiveItems.reduce((sum, item) => sum + item.profitLoss, 0);
+        document.getElementById('profitAnalysis').innerHTML = `
+          <strong>Analysis:</strong> ${positiveItems.length} profitable items generating $${totalProfit.toFixed(2)} total.
+          Top performer: ${positiveItems[0].itemName} ($${positiveItems[0].profitLoss.toFixed(2)})
+        `;
+      } else {
+        profitCtx.parentElement.innerHTML += '<div class="alert alert-warning">No profitable items found</div>';
+      }
+    }
+
+    // 2. Sales Doughnut Chart
+    const salesCtx = document.getElementById('salesDoughnutChart');
+    if (salesCtx) {
+      const salesData = <%- JSON.stringify(recentSales || []) %>;
+      
+      if (salesData.length > 0) {
+        // Aggregate sales by item
+        const salesByItem = salesData.reduce((acc, sale) => {
+          const key = sale.itemName;
+          acc[key] = (acc[key] || 0) + (sale.quantity * sale.unitPrice);
+          return acc;
+        }, {});
+        
+        const labels = Object.keys(salesByItem);
+        const values = Object.values(salesByItem);
+        
+        new Chart(salesCtx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              backgroundColor: [
+                '#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff'
+              ]
+            }]
+          }
+        });
+        
+        // Analysis text
+        const topItem = labels[values.indexOf(Math.max(...values))];
+        document.getElementById('salesAnalysis').innerHTML = `
+          <strong>Analysis:</strong> ${labels.length} items sold. Top seller: ${topItem}
+        `;
+      } else {
+        salesCtx.parentElement.innerHTML += '<div class="alert alert-warning">No sales data available</div>';
+      }
+    }
+  } catch (error) {
+    console.error('Chart error:', error);
+    // Display error message on page
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger';
+    errorDiv.textContent = 'Error loading charts. See console for details.';
+    document.querySelector('.container').prepend(errorDiv);
+  }
+});
+</script>
+
+<%- include('partials/footer') %>

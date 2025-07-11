@@ -1,0 +1,183 @@
+<%- include('partials/header') %>
+
+<div class="container mt-4">
+  <h2>Search Inventory</h2>
+  
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link <%= activeTab === 'Item' ? 'active' : '' %>" 
+         href="/search/Item">Items</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= activeTab === 'Customer' ? 'active' : '' %>" 
+         href="/search/Customer">Customers</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= activeTab === 'Sale' ? 'active' : '' %>" 
+         href="/search/Sale">Sales</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= activeTab === 'Purchase' ? 'active' : '' %>" 
+         href="/search/Purchase">Purchases</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link <%= activeTab === 'Vendor' ? 'active' : '' %>" 
+         href="/search/Vendor">Vendors</a>
+    </li>
+  </ul>
+  
+  <form action="/search/<%= activeTab %>" method="GET">
+    <div class="input-group mb-3">
+      <input type="text" class="form-control" name="q" 
+             placeholder="Search..." value="<%= searchQuery || '' %>">
+      <div class="input-group-append">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </div>
+    </div>
+  </form>
+  
+  <% if (activeTab === 'Item') { %>
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Item Number</th>
+            <th>Name</th>
+            <th>Stock</th>
+            <th>Price</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(item => { %>
+            <tr>
+              <td><%= item.itemNumber %></td>
+              <td><%= item.itemName %></td>
+              <td><%= item.stock %></td>
+              <td>$<%= item.unitPrice.toFixed(2) %></td>
+              <td>
+                <span class="badge badge-<%= item.status === 'Active' ? 'success' : 'secondary' %>">
+                  <%= item.status %>
+                </span>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else if (activeTab === 'Customer') { %>
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Customer ID</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% customers.forEach(customer => { %>
+          <tr>
+            <td><%= customer.customerId %></td>
+            <td><%= customer.fullName %></td>
+            <td><%= customer.phoneMobile %></td>
+            <td><%= customer.email || '-' %></td>
+            <td>
+              <span class="badge badge-<%= customer.status === 'Active' ? 'success' : 'secondary' %>">
+                <%= customer.status %>
+              </span>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } else if (activeTab === 'Sale') { %>
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Sale ID</th>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Customer</th>
+          <th>Quantity</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% sales.forEach(sale => { %>
+          <tr>
+            <td><%= sale.saleId %></td>
+            <td><%= sale.saleDate.toISOString().split('T')[0] %></td>
+            <td><%= sale.itemName %></td>
+            <td><%= sale.customerName %></td>
+            <td><%= sale.quantity %></td>
+            <td>$<%= sale.total.toFixed(2) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } else if (activeTab === 'Purchase') { %>
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Purchase ID</th>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Vendor</th>
+          <th>Quantity</th>
+          <th>Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% purchases.forEach(purchase => { %>
+          <tr>
+            <td><%= purchase.purchaseId %></td>
+            <td><%= purchase.purchaseDate.toISOString().split('T')[0] %></td>
+            <td><%= purchase.itemName %></td>
+            <td><%= purchase.vendorName %></td>
+            <td><%= purchase.quantity %></td>
+            <td>$<%= purchase.totalCost.toFixed(2) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } else if (activeTab === 'Vendor') { %>
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Vendor Name</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Address</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% vendors.forEach(vendor => { %>
+          <tr>
+            <td><%= vendor.fullName %></td>
+            <td><%= vendor.phoneMobile %></td>
+            <td><%= vendor.email || '-' %></td>
+            <td><%= vendor.address %></td>
+            <td>
+              <span class="badge badge-<%= vendor.status === 'Active' ? 'success' : 'secondary' %>">
+                <%= vendor.status %>
+              </span>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+</div>
+
+<%- include('partials/footer') %>
