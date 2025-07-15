@@ -10,33 +10,10 @@ const { isAuthenticated } = require('../middleware/auth');
 // Maximum results to return per search
 const MAX_RESULTS = 50;
 
-/**
- * Search Page
- * Persists search history in session
- */
-router.get('/search', isAuthenticated, async (req, res) => {
-  try {
-    // Get recent searches from session
-    const recentSearches = req.session.recentSearches || [];
-    const lastSearchType = req.session.lastSearchType || 'Item';
 
-    res.render('search', { 
-      user: req.user,
-      activeTab: lastSearchType,
-      searchQuery: '',
-      items: [],
-      customers: [],
-      sales: [],
-      purchases: [],
-      vendors: [],
-      recentSearches,
-      message: req.flash('info')
-    });
-  } catch (err) {
-    console.error('Search page error:', err);
-    req.flash('error', 'Failed to load search page');
-    res.redirect('/dashboard');
-  }
+router.get('/search', isAuthenticated, (req, res) => {
+  const defaultType = req.session.lastSearchType || 'Item';
+  res.redirect(`/search/${defaultType}`);
 });
 
 /**
@@ -61,7 +38,7 @@ router.get('/search/:type', isAuthenticated, async (req, res) => {
     }
 
     let results = [];
-    const searchConditions = [];
+    let searchConditions = [];
 
     // Build search conditions based on type
     switch (type) {
@@ -92,31 +69,47 @@ router.get('/search/:type', isAuthenticated, async (req, res) => {
         break;
 
       case 'Sale':
-        searchConditions.push(
-          { 'items.itemName': { $regex: q || '', $options: 'i' } },
-          { 'customer.fullName': { $regex: q || '', $options: 'i' } }
-        );
-        if (!isNaN(q)) {
-          searchConditions.push({ saleId: q });
+        searchConditions = [];
+        
+        // Search by sale ID
+        if (q && q.trim() !== '') {
+          searchConditions.push(
+            { saleId: { $regex: q, $options: 'i' } },
+            { itemName: { $regex: q, $options: 'i' } },
+            { customerName: { $regex: q, $options: 'i' } }
+          );
+          
+          // Search by item number if numeric
+          if (!isNaN(q)) {
+            searchConditions.push({ itemNumber: parseInt(q) });
+          }
         }
-        results = await Sale.find({ $or: searchConditions })
+        
+        results = await Sale.find(searchConditions.length ? { $or: searchConditions } : {})
           .limit(MAX_RESULTS)
-          .sort({ saleDate: -1 })
-          .populate('customer', 'fullName');
+          .sort({ saleDate: -1 });
         break;
 
       case 'Purchase':
-        searchConditions.push(
-          { 'items.itemName': { $regex: q || '', $options: 'i' } },
-          { 'vendor.fullName': { $regex: q || '', $options: 'i' } }
-        );
-        if (!isNaN(q)) {
-          searchConditions.push({ purchaseId: q });
+        searchConditions = [];
+        
+        // Search by purchase ID
+        if (q && q.trim() !== '') {
+          searchConditions.push(
+            { purchaseId: { $regex: q, $options: 'i' } },
+            { itemName: { $regex: q, $options: 'i' } }
+          );
+          
+          // Search by item number if numeric
+          if (!isNaN(q)) {
+            searchConditions.push({ itemNumber: parseInt(q) });
+          }
         }
-        results = await Purchase.find({ $or: searchConditions })
+        
+        results = await Purchase.find(searchConditions.length ? { $or: searchConditions } : {})
           .limit(MAX_RESULTS)
           .sort({ purchaseDate: -1 })
-          .populate('vendor', 'fullName');
+          .populate('vendor', 'fullName'); // Only populate if needed in results
         break;
 
       case 'Vendor':

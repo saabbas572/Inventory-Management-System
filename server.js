@@ -26,9 +26,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Session configuration
+// In your main server file
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  secret: process.env.SESSION_SECRET || 'abs',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ 
@@ -36,7 +36,9 @@ app.use(session({
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    httpOnly: true,
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 

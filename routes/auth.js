@@ -13,35 +13,42 @@ router.get('/login', (req, res) => {
   });
 });
 
-// Login Handle
+// In your auth routes file
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
 
-    if (!username || !password) {
+    if (!trimmedUsername || !trimmedPassword) {
       req.flash('error', 'Please provide both username and password');
       return res.redirect('/login');
     }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ 
+      username: { $regex: new RegExp(`^${trimmedUsername}$`, 'i') }
+    });
 
     if (!user) {
       req.flash('error', 'Invalid username or password');
       return res.redirect('/login');
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(trimmedPassword, user.password);
+    
     if (!isMatch) {
       req.flash('error', 'Invalid username or password');
       return res.redirect('/login');
     }
 
+    // Set session data
     req.session.user = {
       id: user._id,
       username: user.username,
       role: user.role || 'user'
     };
 
+    // Save session before redirect
     req.session.save(err => {
       if (err) {
         console.error('Session save error:', err);
@@ -49,11 +56,11 @@ router.post('/login', async (req, res) => {
         return res.redirect('/login');
       }
       req.flash('success', 'Logged in successfully');
-      res.redirect('/dashboard');
+      return res.redirect('/dashboard');
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     req.flash('error', 'Login failed');
     res.redirect('/login');
   }
@@ -67,42 +74,49 @@ router.get('/register', (req, res) => {
   });
 });
 
-// Register Handle
+// Register Handle - Improved Version
 router.post('/register', async (req, res) => {
   const { username, password, confirmPassword } = req.body;
 
   try {
-    if (!username || !password || !confirmPassword) {
+    // Trim all inputs
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+    const trimmedConfirm = confirmPassword.trim();
+
+    if (!trimmedUsername || !trimmedPassword || !trimmedConfirm) {
       req.flash('error', 'All fields are required');
       return res.redirect('/register');
     }
 
-    if (password !== confirmPassword) {
+    if (trimmedPassword !== trimmedConfirm) {
       req.flash('error', 'Passwords do not match');
       return res.redirect('/register');
     }
 
-    if (password.length < 6) {
+    if (trimmedPassword.length < 6) {
       req.flash('error', 'Password must be at least 6 characters');
       return res.redirect('/register');
     }
 
-    let user = await User.findOne({ username });
+    // Check for existing user (case-insensitive)
+    let user = await User.findOne({ 
+      username: { $regex: new RegExp(`^${trimmedUsername}$`, 'i') }
+    });
+
     if (user) {
       req.flash('error', 'Username already exists');
       return res.redirect('/register');
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     user = new User({
-      username,
-      password: hashedPassword
+      username: trimmedUsername,
+      password: trimmedPassword
     });
 
     await user.save();
 
+    // Auto-login after registration
     req.session.user = {
       id: user._id,
       username: user.username,
@@ -120,7 +134,7 @@ router.post('/register', async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('Registration error:', err);
     req.flash('error', 'Registration failed');
     res.redirect('/register');
   }

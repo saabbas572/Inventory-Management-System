@@ -5,7 +5,6 @@ const Item = require('../models/Item');
 const Vendor = require('../models/Vendor');
 const { isAuthenticated } = require('../middleware/auth');
 
-// GET: Display purchases with optional filters
 router.get('/purchases', isAuthenticated, async (req, res) => {
   try {
     const { startDate, endDate, vendorId } = req.query;
@@ -19,10 +18,13 @@ router.get('/purchases', isAuthenticated, async (req, res) => {
     }
 
     if (vendorId) {
-      query.vendorId = vendorId;
+      query.vendor = vendorId; // Changed from vendorId to vendor to match schema
     }
 
-    const purchases = await Purchase.find(query).sort({ purchaseDate: -1 });
+    const purchases = await Purchase.find(query)
+      .sort({ purchaseDate: -1 })
+      .populate('vendor', 'fullName'); // Add this line to populate vendor data
+
     const items = await Item.find({ status: 'Active' }).sort({ itemName: 1 });
     const vendors = await Vendor.find({ status: 'Active' }).sort({ fullName: 1 });
 
@@ -96,6 +98,38 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
     res.redirect('/purchases');
   }
 });
+
+
+// POST: Delete a purchase
+router.post('/purchases/:id/delete', isAuthenticated, async (req, res) => {
+  const purchaseId = req.params.id;
+
+  try {
+    const purchase = await Purchase.findById(purchaseId);
+
+    if (!purchase) {
+      req.flash('error', 'Purchase not found');
+      return res.redirect('/purchases');
+    }
+
+    // Decrease stock of item
+    const item = await Item.findOne({ itemNumber: purchase.itemNumber });
+    if (item) {
+      item.stock -= purchase.quantity;
+      await item.save();
+    }
+
+    await Purchase.findByIdAndDelete(purchaseId);
+
+    req.flash('success', `Purchase ${purchase.purchaseId} deleted successfully`);
+    res.redirect('/purchases');
+  } catch (err) {
+    console.error('Error deleting purchase:', err);
+    req.flash('error', 'Failed to delete purchase');
+    res.redirect('/purchases');
+  }
+});
+
 
 
 module.exports = router;

@@ -117,7 +117,7 @@ router.post('/sales', isAuthenticated, async (req, res) => {
 });
 
 // Update existing sale - PUT /sales/:id
-router.put('/sales/:id', isAuthenticated, async (req, res) => {
+router.post('/sales/:id', isAuthenticated, async (req, res) => {
   try {
     const { quantity, unitPrice } = req.body;
 

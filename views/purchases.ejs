@@ -123,7 +123,7 @@
                   <td><%= p.purchaseId %></td>
                   <td><%= new Date(p.purchaseDate).toLocaleDateString() %></td>
                   <td><%= p.itemName %> (<%= p.itemNumber %>)</td>
-                  <td><%= p.vendorName %></td>
+                  <td><%= p.vendor.fullName %></td>
                   <td><%= p.quantity %></td>
                   <td>$<%= p.unitPrice.toFixed(2) %></td>
                   <td>$<%= p.totalCost.toFixed(2) %></td>
