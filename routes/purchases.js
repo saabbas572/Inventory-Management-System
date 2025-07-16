@@ -5,25 +5,26 @@ const Item = require('../models/Item');
 const Vendor = require('../models/Vendor');
 const { isAuthenticated } = require('../middleware/auth');
 
+// GET: Load purchases
 router.get('/purchases', isAuthenticated, async (req, res) => {
   try {
     const { startDate, endDate, vendorId } = req.query;
-    let query = {};
+    const query = {};
 
     if (startDate && endDate) {
       query.purchaseDate = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate),
       };
     }
 
     if (vendorId) {
-      query.vendor = vendorId; // Changed from vendorId to vendor to match schema
+      query.vendor = vendorId;
     }
 
     const purchases = await Purchase.find(query)
       .sort({ purchaseDate: -1 })
-      .populate('vendor', 'fullName'); // Add this line to populate vendor data
+      .populate('vendor', 'fullName');
 
     const items = await Item.find({ status: 'Active' }).sort({ itemName: 1 });
     const vendors = await Vendor.find({ status: 'Active' }).sort({ fullName: 1 });
@@ -38,7 +39,7 @@ router.get('/purchases', isAuthenticated, async (req, res) => {
       selectedVendor: vendorId || '',
       csrfToken: req.csrfToken(),
       successMessage: req.flash('success')[0] || '',
-      errorMessage: req.flash('error')[0] || ''
+      errorMessage: req.flash('error')[0] || '',
     });
   } catch (err) {
     console.error('Error loading purchases:', err);
@@ -50,13 +51,17 @@ router.get('/purchases', isAuthenticated, async (req, res) => {
 // POST: Add a new purchase
 router.post('/purchases', isAuthenticated, async (req, res) => {
   const { itemNumber, vendorId, purchaseDate, quantity, unitPrice } = req.body;
-  console.log("POST /purchases req.body:", req.body); // Debug line
+  console.log("POST /purchases req.body:", req.body);
 
   try {
     const parsedQuantity = parseInt(quantity);
     const parsedUnitPrice = parseFloat(unitPrice);
 
-    if (!itemNumber || !vendorId || !purchaseDate || isNaN(parsedQuantity) || isNaN(parsedUnitPrice) || parsedQuantity <= 0 || parsedUnitPrice <= 0) {
+    if (
+      !itemNumber || !vendorId || !purchaseDate ||
+      isNaN(parsedQuantity) || parsedQuantity <= 0 ||
+      isNaN(parsedUnitPrice) || parsedUnitPrice <= 0
+    ) {
       req.flash('error', 'All fields must be valid');
       return res.redirect('/purchases');
     }
@@ -73,19 +78,19 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
     const purchaseId = `PUR${(count + 1).toString().padStart(4, '0')}`;
     const totalCost = parsedQuantity * parsedUnitPrice;
 
-    const newPurchase = new Purchase({
+    const purchaseData = {
       purchaseId,
       purchaseDate,
       itemNumber,
       itemName: item.itemName,
-      vendor: vendorId,          // Correct field name here
+      vendor: vendorId,
       quantity: parsedQuantity,
       unitPrice: parsedUnitPrice,
       totalCost,
-      createdBy: req.session.user._id
-    });
+      createdBy: req.session.user._id,
+    };
 
-    await newPurchase.save();
+    const newPurchase = await Purchase.create(purchaseData);
 
     item.stock += parsedQuantity;
     await item.save();
@@ -99,7 +104,6 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
   }
 });
 
-
 // POST: Delete a purchase
 router.post('/purchases/:id/delete', isAuthenticated, async (req, res) => {
   const purchaseId = req.params.id;
@@ -112,7 +116,6 @@ router.post('/purchases/:id/delete', isAuthenticated, async (req, res) => {
       return res.redirect('/purchases');
     }
 
-    // Decrease stock of item
     const item = await Item.findOne({ itemNumber: purchase.itemNumber });
     if (item) {
       item.stock -= purchase.quantity;
@@ -129,7 +132,5 @@ router.post('/purchases/:id/delete', isAuthenticated, async (req, res) => {
     res.redirect('/purchases');
   }
 });
-
-
 
 module.exports = router;
