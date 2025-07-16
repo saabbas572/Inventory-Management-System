@@ -19,51 +19,33 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
       .limit(5)
       .lean();
 
-    // Calculate total cost from recent purchases
+    // Calculate totals
     const totalCost = recentPurchases.reduce((sum, p) => sum + (p.quantity * p.unitPrice), 0);
-
-    // Calculate total revenue from recent sales
     const totalRevenue = recentSales.reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
-
     const profit = totalRevenue - totalCost;
 
-    // --- New Feature: Calculate Profit/Loss per Item based on recent purchases and sales ---
-    // Create maps keyed by itemNumber for purchases and sales
-    const purchaseMap = {};
-    recentPurchases.forEach(p => {
-      if (!purchaseMap[p.itemNumber]) {
-        purchaseMap[p.itemNumber] = { totalQty: 0, totalCost: 0, itemName: p.itemName };
-      }
-      purchaseMap[p.itemNumber].totalQty += p.quantity;
-      purchaseMap[p.itemNumber].totalCost += p.quantity * p.unitPrice;
-    });
+    // Enhanced analytics using only existing variables
+    const itemPerformance = recentPurchases.map(purchase => {
+      // Find matching sales for this item
+      const itemSales = recentSales.filter(s => s.itemNumber === purchase.itemNumber);
+      const soldQty = itemSales.reduce((sum, s) => sum + s.quantity, 0);
+      const salesRevenue = itemSales.reduce((sum, s) => sum + (s.quantity * s.unitPrice), 0);
 
-    const saleMap = {};
-    recentSales.forEach(s => {
-      if (!saleMap[s.itemNumber]) {
-        saleMap[s.itemNumber] = { totalQty: 0, totalRevenue: 0 };
-      }
-      saleMap[s.itemNumber].totalQty += s.quantity;
-      saleMap[s.itemNumber].totalRevenue += s.quantity * s.unitPrice;
-    });
-
-    // Build profitLossSummary array
-    const profitLossSummary = Object.keys(purchaseMap).map(itemNumber => {
-      const purchaseData = purchaseMap[itemNumber];
-      const saleData = saleMap[itemNumber] || { totalQty: 0, totalRevenue: 0 };
-      const avgPurchasePrice = purchaseData.totalCost / purchaseData.totalQty;
-      const avgSalePrice = saleData.totalQty ? saleData.totalRevenue / saleData.totalQty : 0;
-      const soldQty = saleData.totalQty;
-      const profitLoss = soldQty * (avgSalePrice - avgPurchasePrice);
+      // Calculate profit only on sold items
+      // Cost of goods sold is soldQty * purchase unit price
+      const costOfSoldItems = soldQty * purchase.unitPrice;
+      const itemProfit = salesRevenue - costOfSoldItems;
+      const profitPercentage = costOfSoldItems > 0 ? (itemProfit / costOfSoldItems) * 100 : 0;
 
       return {
-        itemNumber,
-        itemName: purchaseData.itemName,
-        purchasedQty: purchaseData.totalQty,
+        itemNumber: purchase.itemNumber,
+        itemName: purchase.itemName,
+        purchasePrice: purchase.unitPrice,
+        avgSalePrice: soldQty > 0 ? salesRevenue / soldQty : 0,
+        purchasedQty: purchase.quantity,
         soldQty,
-        avgPurchasePrice,
-        avgSalePrice,
-        profitLoss
+        profit: itemProfit,
+        profitPercentage
       };
     });
 
@@ -74,13 +56,13 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
       totalCost,
       totalRevenue,
       profit,
-      profitLossSummary,   // <-- pass new data to template
+      itemPerformance,  // New analytics data with profit on sold items only
       successMessage: req.flash('success'),
       errorMessage: req.flash('error'),
       csrfToken: req.csrfToken()
     });
   } catch (err) {
-    console.error('🔥 Error loading dashboard:', err);
+    console.error('Error loading dashboard:', err);
     req.flash('error', 'Failed to load dashboard data');
     res.redirect('/');
   }

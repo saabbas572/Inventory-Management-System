@@ -4,6 +4,18 @@ const Purchase = require('../models/Purchase');
 const Item = require('../models/Item');
 const Vendor = require('../models/Vendor');
 const { isAuthenticated } = require('../middleware/auth');
+const Sequence = require('../models/sequence'); // Add this line
+
+
+
+async function getNextPurchaseId() {
+  const sequence = await Sequence.findByIdAndUpdate(
+    'purchaseId',
+    { $inc: { sequence_value: 1 } },
+    { new: true, upsert: true }
+  );
+  return `PUR${sequence.sequence_value.toString().padStart(4, '0')}`;
+}
 
 // GET: Load purchases
 router.get('/purchases', isAuthenticated, async (req, res) => {
@@ -51,9 +63,9 @@ router.get('/purchases', isAuthenticated, async (req, res) => {
 // POST: Add a new purchase
 router.post('/purchases', isAuthenticated, async (req, res) => {
   const { itemNumber, vendorId, purchaseDate, quantity, unitPrice } = req.body;
-  console.log("POST /purchases req.body:", req.body);
 
   try {
+    // Input validation (keep your existing code)
     const parsedQuantity = parseInt(quantity);
     const parsedUnitPrice = parseFloat(unitPrice);
 
@@ -66,6 +78,7 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
       return res.redirect('/purchases');
     }
 
+    // Check item and vendor (keep your existing code)
     const item = await Item.findOne({ itemNumber });
     const vendor = await Vendor.findById(vendorId);
 
@@ -74,8 +87,8 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
       return res.redirect('/purchases');
     }
 
-    const count = await Purchase.countDocuments();
-    const purchaseId = `PUR${(count + 1).toString().padStart(4, '0')}`;
+    // Generate safe purchase ID
+    const purchaseId = await getNextPurchaseId();
     const totalCost = parsedQuantity * parsedUnitPrice;
 
     const purchaseData = {
@@ -92,6 +105,7 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
 
     const newPurchase = await Purchase.create(purchaseData);
 
+    // Update stock (keep your existing code)
     item.stock += parsedQuantity;
     await item.save();
 

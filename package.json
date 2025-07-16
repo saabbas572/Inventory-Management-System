@@ -5,13 +5,18 @@
   "scripts": {
     "start": "node server.js",
     "test": "jest",
-  "test:watch": "jest --watch",
-  "test:coverage": "jest --coverage"
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "jest": {
     "testEnvironment": "node",
-    "testPathIgnorePatterns": ["/node_modules/"],
-    "coveragePathIgnorePatterns": ["/node_modules/", "/tests/"],
+    "testPathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/"
+    ],
     "verbose": true
   },
   "keywords": [],
@@ -21,6 +26,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
+    "compression": "^1.8.0",
     "connect-flash": "^0.1.1",
     "connect-mongo": "^5.1.0",
     "cookie-parser": "^1.4.7",
@@ -29,7 +35,9 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "helmet": "^8.1.0",
     "mongoose": "^8.16.1",
+    "morgan": "^1.10.0",
     "node-fetch": "^3.3.2",
     "pdfkit": "^0.13.0"
   },

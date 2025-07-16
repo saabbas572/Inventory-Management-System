@@ -3,19 +3,18 @@
 <div class="container">
   <h2>Sale Details</h2>
   
-  <% if (errorMessage.length > 0) { %>
-    <div class="alert alert-danger">
-      <% errorMessage.forEach(msg => { %>
-        <p><%= msg %></p>
-      <% }) %>
+  <!-- Flash Messages Section -->
+  <% if (successMessage && successMessage.length > 0) { %>
+    <div class="alert alert-success alert-dismissible fade show">
+      <%= successMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   <% } %>
-  
-  <% if (successMessage.length > 0) { %>
-    <div class="alert alert-success">
-      <% successMessage.forEach(msg => { %>
-        <p><%= msg %></p>
-      <% }) %>
+
+  <% if (errorMessage && errorMessage.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show">
+      <%= errorMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   <% } %>
   
@@ -109,9 +108,14 @@
           <td><%= sale.total.toFixed(2) %></td>
           <td>
             <button class="btn btn-sm btn-info edit-btn" data-id="<%= sale._id %>">Edit</button>
+            
+            <form action="/sales/delete/<%= sale._id %>" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete sale <%= sale.saleId %>?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
           </td>
         </tr>
-      <% }); %>
+      <% }) %>
     </tbody>
   </table>
 </div>
@@ -164,19 +168,13 @@
     });
   });
   
+  // Update button submits the form to update route
   document.getElementById('updateBtn').addEventListener('click', function() {
     const form = document.getElementById('saleForm');
     form.action = `/sales/${document.getElementById('saleId').value}`;
+    form.method = 'POST'; // Your backend uses POST for update
     
-    let methodInput = document.querySelector('input[name="_method"]');
-    if (!methodInput) {
-      methodInput = document.createElement('input');
-      methodInput.type = 'hidden';
-      methodInput.name = '_method';
-      form.appendChild(methodInput);
-    }
-    methodInput.value = 'PUT';
-    
+    // Submit form
     form.submit();
   });
 </script>

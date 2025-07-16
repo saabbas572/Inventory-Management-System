@@ -26,19 +26,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// In your main server file
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'abs',
-  resave: false,
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: true, // Changed from false to ensure saves
   saveUninitialized: false,
-  store: MongoStore.create({ 
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/inventory_system'
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    touchAfter: 24 * 3600 // reduces session writes
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'strict',
-    maxAge: 24 * 60 * 60 * 1000
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
 
@@ -54,11 +53,26 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Make flash messages and user available to all views
+// app.use((req, res, next) => {
+//   res.locals.successMessage = req.flash('success') || [];
+//   res.locals.errorMessage = req.flash('error') || [];
+//   res.locals.csrfToken = req.csrfToken();
+//   next();
+// });
+
 app.use((req, res, next) => {
-  res.locals.successMessage = req.flash('success') || null;
-  res.locals.errorMessage = req.flash('error') || null;
-  res.locals.user = req.session.user || null;
-  res.locals.csrfToken = req.csrfToken();
+  console.log('Session ID:', req.sessionID);
+res.locals.successMessage = req.flash('success') || [];
+  res.locals.errorMessage = req.flash('error') || [];
+  if (!req.session.flash) {
+    req.session.flash = {};
+  }
+
+  console.log('Flash messages:', {
+    error: req.flash('error'),
+    success: req.flash('success')
+  });
+    res.locals.user = req.session.user || null;
   next();
 });
 
