@@ -20,6 +20,21 @@ router.get('/vendors', isAuthenticated, async (req, res) => {
   }
 });
 
+// GET /vendors/:id - Return single vendor data as JSON (for edit form)
+router.get('/vendors/:id', isAuthenticated, async (req, res) => {
+  try {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    res.json(vendor);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to get vendor data' });
+  }
+});
+
+
 // Add new vendor
 router.post('/vendors', isAuthenticated, async (req, res) => {
   const { fullName, status, email, phoneMobile, address, city } = req.body;

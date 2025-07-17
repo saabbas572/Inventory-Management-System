@@ -74,12 +74,10 @@ router.get('/register', (req, res) => {
   });
 });
 
-// Register Handle - Improved Version
 router.post('/register', async (req, res) => {
   const { username, password, confirmPassword } = req.body;
 
   try {
-    // Trim all inputs
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
     const trimmedConfirm = confirmPassword.trim();
@@ -94,12 +92,15 @@ router.post('/register', async (req, res) => {
       return res.redirect('/register');
     }
 
-    if (trimmedPassword.length < 6) {
-      req.flash('error', 'Password must be at least 6 characters');
+    // Strong password regex:
+    // Minimum 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+
+    if (!strongPasswordRegex.test(trimmedPassword)) {
+      req.flash('error', 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.');
       return res.redirect('/register');
     }
 
-    // Check for existing user (case-insensitive)
     let user = await User.findOne({ 
       username: { $regex: new RegExp(`^${trimmedUsername}$`, 'i') }
     });
@@ -109,14 +110,17 @@ router.post('/register', async (req, res) => {
       return res.redirect('/register');
     }
 
+    // Hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(trimmedPassword, salt);
+
     user = new User({
       username: trimmedUsername,
-      password: trimmedPassword
+      password: hashedPassword
     });
 
     await user.save();
 
-    // Auto-login after registration
     req.session.user = {
       id: user._id,
       username: user.username,

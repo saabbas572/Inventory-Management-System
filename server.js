@@ -76,6 +76,7 @@ res.locals.successMessage = req.flash('success') || [];
   next();
 });
 
+
 // Routes - mount dashboardRoutes first so /dashboard is handled there
 app.use('/', dashboardRoutes);
 app.use('/', require('./routes/auth'));

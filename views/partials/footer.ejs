@@ -7,8 +7,10 @@
   letter-spacing: 0.05em; 
   border-top: 3px solid #00aaff;
   width: 100%;
-  position: relative;
-  bottom: 0;
+  position: fixed;      /* changed from relative to fixed */
+  bottom: 0;           /* stick to bottom */
+  left: 0;             /* full width from left */
+  z-index: 1000;       /* stay on top */
 ">
   <p>Copyright © Inventory System <%= new Date().getFullYear() %></p>
 </footer>

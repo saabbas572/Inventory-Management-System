@@ -7,17 +7,6 @@
       <a href="/reports/download/<%= report._id %>" class="btn btn-success">
         <i class="fas fa-file-pdf"></i> Download PDF
       </a>
-    <% } else { %>
-      <form action="/reports/generate" method="POST" class="d-inline">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <input type="hidden" name="reportType" value="<%= reportType %>">
-        <input type="hidden" name="startDate" value="<%= startDate %>">
-        <input type="hidden" name="endDate" value="<%= endDate %>">
-        <input type="hidden" name="format" value="pdf">
-        <button type="submit" class="btn btn-success">
-          <i class="fas fa-file-export"></i> Generate PDF
-        </button>
-      </form>
     <% } %>
   </div>
   
@@ -26,9 +15,9 @@
       <h5 class="card-title">Report Details</h5>
       <p class="card-text">
         <strong>Date Range:</strong> 
-  <%= new Date(startDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) %> 
-  to 
-  <%= new Date(endDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) %>
+        <%= new Date(startDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) %> 
+        to 
+        <%= new Date(endDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) %>
       </p>
       <p class="card-text">
         <strong>Generated On:</strong> <%= new Date().toLocaleString() %>

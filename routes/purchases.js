@@ -60,6 +60,115 @@ router.get('/purchases', isAuthenticated, async (req, res) => {
   }
 });
 
+
+// GET /purchases/:id/edit - show edit form for a purchase
+router.get('/purchases/:id/edit', isAuthenticated, async (req, res) => {
+  try {
+    const purchase = await Purchase.findById(req.params.id).populate('vendor', 'fullName');
+    if (!purchase) {
+      req.flash('error', 'Purchase not found');
+      return res.redirect('/purchases');
+    }
+
+    const items = await Item.find({ status: 'Active' }).sort({ itemName: 1 });
+    const vendors = await Vendor.find({ status: 'Active' }).sort({ fullName: 1 });
+
+    res.render('purchase-edit', {
+      purchase,
+      items,
+      vendors,
+      user: req.session.user,
+      csrfToken: req.csrfToken(),
+      successMessage: req.flash('success')[0] || '',
+      errorMessage: req.flash('error')[0] || '',
+    });
+  } catch (err) {
+    console.error('Error loading purchase edit page:', err);
+    req.flash('error', 'Failed to load purchase edit form');
+    res.redirect('/purchases');
+  }
+});
+
+
+// POST /purchases/:id/update - process the form submission to update purchase
+router.post('/purchases/:id/update', isAuthenticated, async (req, res) => {
+  try {
+    const { quantity, unitPrice } = req.body;
+    const parsedQuantity = parseInt(quantity);
+    const parsedUnitPrice = parseFloat(unitPrice);
+
+    if (isNaN(parsedQuantity) || parsedQuantity < 1 || isNaN(parsedUnitPrice) || parsedUnitPrice <= 0) {
+      req.flash('error', 'Invalid quantity or unit price');
+      return res.redirect(`/purchases/${req.params.id}/edit`);
+    }
+
+    const purchase = await Purchase.findById(req.params.id);
+    if (!purchase) {
+      req.flash('error', 'Purchase not found');
+      return res.redirect('/purchases');
+    }
+
+    // Adjust stock: subtract old quantity from item stock
+    const item = await Item.findOne({ itemNumber: purchase.itemNumber });
+    if (item) {
+      item.stock -= purchase.quantity; // remove old qty
+      await item.save();
+    }
+
+    // Add new quantity to stock
+    if (item) {
+      item.stock += parsedQuantity;
+      await item.save();
+    }
+
+    // Update purchase fields
+    purchase.quantity = parsedQuantity;
+    purchase.unitPrice = parsedUnitPrice;
+    purchase.totalCost = parsedQuantity * parsedUnitPrice;
+
+    await purchase.save();
+
+    req.flash('success', 'Purchase updated successfully');
+    res.redirect('/purchases');
+  } catch (err) {
+    console.error('Error updating purchase:', err);
+    req.flash('error', 'Failed to update purchase');
+    res.redirect(`/purchases/${req.params.id}/edit`);
+  }
+});
+
+
+// GET: View single purchase details
+router.get('/purchases/:id', isAuthenticated, async (req, res) => {
+  try {
+    const purchaseId = req.params.id;
+
+    // Find purchase by Mongo _id
+    const purchase = await Purchase.findById(purchaseId).populate('vendor', 'fullName');
+    if (!purchase) {
+      req.flash('error', 'Purchase not found');
+      return res.redirect('/purchases');
+    }
+
+    // You can also load item details if needed
+    const item = await Item.findOne({ itemNumber: purchase.itemNumber });
+
+    res.render('purchase-details', { // create this view
+      purchase,
+      item,
+      user: req.session.user,
+      csrfToken: req.csrfToken(),
+      successMessage: req.flash('success')[0] || '',
+      errorMessage: req.flash('error')[0] || ''
+    });
+  } catch (err) {
+    console.error('Error loading purchase details:', err);
+    req.flash('error', 'Failed to load purchase details');
+    res.redirect('/purchases');
+  }
+});
+
+
 // POST: Add a new purchase
 router.post('/purchases', isAuthenticated, async (req, res) => {
   const { itemNumber, vendorId, purchaseDate, quantity, unitPrice } = req.body;

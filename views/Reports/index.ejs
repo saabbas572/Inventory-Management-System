@@ -2,11 +2,20 @@
 
 <div class="container mt-4">
   <h2>Generate Report</h2>
-  
-  <% if (errorMessage) { %>
-    <div class="alert alert-danger"><%= errorMessage %></div>
-  <% } %>
-  
+  <% const error = locals.error; const success = locals.success; %>
+
+<% if (error && error.length > 0) { %>
+  <div class="alert alert-danger" role="alert">
+    <%= error[0] %>
+  </div>
+<% } %>
+
+<% if (success && success.length > 0) { %>
+  <div class="alert alert-success" role="alert">
+    <%= success[0] %>
+  </div>
+<% } %>
+
   <form action="/reports/generate" method="POST">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     

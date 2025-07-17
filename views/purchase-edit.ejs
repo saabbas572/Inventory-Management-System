@@ -2,7 +2,7 @@
 
 <div class="container mt-4">
   <h2>Edit Purchase - <%= purchase.purchaseId %></h2>
-  <form method="POST" action="/purchases/<%= purchase._id %>">
+  <form method="POST" action="/purchases/<%= purchase._id %>/update">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
     <div class="mb-3">

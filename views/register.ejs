@@ -2,9 +2,20 @@
 
 <div class="container">
   <h1>Register</h1>
-  <% if (error) { %>
-    <div class="alert alert-danger"><%= error %></div>
-  <% } %>
+  <% if (errorMessage && errorMessage.length > 0) { %>
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <%= errorMessage[0] %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } %>
+
+<% if (successMessage && successMessage.length > 0) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <%= successMessage[0] %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+<% } %>
+
   <form action="/register" method="POST">
     <!-- CSRF Token -->
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -16,6 +27,9 @@
     <div class="form-group">
       <label for="password">Password</label>
       <input type="password" class="form-control" id="password" name="password" required>
+      <small class="form-text text-muted">
+  Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character (e.g., !@#$%^&*).
+</small>
     </div>
     <div class="form-group">
       <label for="confirmPassword">Confirm Password</label>

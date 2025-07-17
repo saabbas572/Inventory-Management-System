@@ -57,7 +57,7 @@
               <td><%= item.stock %></td>
               <td>$<%= item.unitPrice.toFixed(2) %></td>
               <td>
-                <span class="badge badge-<%= item.status === 'Active' ? 'success' : 'secondary' %>">
+                <span class="badge bg-<%= item.status === 'Active' ? 'success' : 'secondary' %>">
                   <%= item.status %>
                 </span>
               </td>
@@ -86,7 +86,7 @@
             <td><%= customer.phoneMobile %></td>
             <td><%= customer.email || '-' %></td>
             <td>
-              <span class="badge badge-<%= customer.status === 'Active' ? 'success' : 'secondary' %>">
+              <span class="badge bg-<%= customer.status === 'Active' ? 'success' : 'secondary' %>">
                 <%= customer.status %>
               </span>
             </td>
@@ -169,7 +169,7 @@
             <td><%= vendor.email || '-' %></td>
             <td><%= vendor.address %></td>
             <td>
-              <span class="badge bg-<%= vendor.status === 'Active' ? 'black' : 'red' %>">
+              <span class="badge bg-<%= vendor.status === 'Active' ? 'success' : 'secondary' %>">
                 <%= vendor.status %>
               </span>
             </td>
