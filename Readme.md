@@ -139,8 +139,3 @@ http://localhost:3000/api-docs
 - Authentication uses JWT stored in cookies.
 - Reports can be exported as PDFs.
 
----
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
