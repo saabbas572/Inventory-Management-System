@@ -1,38 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Item = require('../models/Item');
-const multer = require('multer');
-const path = require('path');
 const { isAuthenticated } = require('../middleware/auth');
 const csrf = require('csurf');
 
-const csrfProtection = csrf({ cookie: false }); // Assuming CSRF tokens via session
-
-// Multer configuration
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, 'public/uploads/items/');
-  },
-  filename: function(req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: function(req, file, cb) {
-    const filetypes = /jpeg|jpg|png|gif/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
-  }
-}).single('itemImage');
+const csrfProtection = csrf({ cookie: false });
 
 // GET items list page
 router.get('/items', isAuthenticated, csrfProtection, async (req, res) => {
@@ -84,104 +56,81 @@ router.get('/items/:id', isAuthenticated, async (req, res) => {
 });
 
 // Add new item
-router.post('/items', isAuthenticated, csrfProtection, (req, res) => {
-  upload(req, res, async (err) => {
-    try {
-      const { itemNumber, itemName, description, discountPercent, stock, unitPrice, status } = req.body;
+router.post('/items', isAuthenticated, csrfProtection, async (req, res) => {
+  try {
+    const { itemNumber, itemName, description, discountPercent, stock, unitPrice, status } = req.body;
 
-      if (!itemNumber || !itemName || !unitPrice) {
-        return res.redirect('/items?error=Item number, name, and unit price are required');
-      }
-
-      const existingItem = await Item.findOne({ itemNumber });
-      if (existingItem) {
-        return res.redirect('/items?error=Item number already exists');
-      }
-
-      if (isNaN(discountPercent) || isNaN(stock) || isNaN(unitPrice)) {
-        return res.redirect('/items?error=Discount, stock, and price must be numbers');
-      }
-
-      if (unitPrice <= 0) {
-        return res.redirect('/items?error=Unit price must be greater than 0');
-      }
-
-      if (err) {
-        const message = err.code === 'LIMIT_FILE_SIZE' 
-          ? 'Image file size too large (max 5MB)' 
-          : err.message;
-        return res.redirect(`/items?error=${encodeURIComponent(message)}`);
-      }
-
-      const newItem = new Item({
-        itemNumber,
-        itemName,
-        description,
-        discountPercent: parseFloat(discountPercent) || 0,
-        stock: parseInt(stock) || 0,
-        unitPrice: parseFloat(unitPrice),
-        status: status || 'Active',
-        imagePath: req.file ? `/uploads/items/${req.file.filename}` : null,
-        createdBy: req.session.user._id
-      });
-
-      await newItem.save();
-      res.redirect(`/items?success=${encodeURIComponent(`Item "${itemName}" added successfully`)}`);
-    } catch (error) {
-      console.error(error);
-      res.redirect('/items?error=Failed to add item');
+    if (!itemNumber || !itemName || !unitPrice) {
+      return res.redirect('/items?error=Item number, name, and unit price are required');
     }
-  });
+
+    const existingItem = await Item.findOne({ itemNumber });
+    if (existingItem) {
+      return res.redirect('/items?error=Item number already exists');
+    }
+
+    if (isNaN(discountPercent) || isNaN(stock) || isNaN(unitPrice)) {
+      return res.redirect('/items?error=Discount, stock, and price must be numbers');
+    }
+
+    if (unitPrice <= 0) {
+      return res.redirect('/items?error=Unit price must be greater than 0');
+    }
+
+    const newItem = new Item({
+      itemNumber,
+      itemName,
+      description,
+      discountPercent: parseFloat(discountPercent) || 0,
+      stock: parseInt(stock) || 0,
+      unitPrice: parseFloat(unitPrice),
+      status: status || 'Active',
+      createdBy: req.session.user._id
+    });
+
+    await newItem.save();
+    res.redirect(`/items?success=${encodeURIComponent(`Item "${itemName}" added successfully`)}`);
+  } catch (error) {
+    console.error(error);
+    res.redirect('/items?error=Failed to add item');
+  }
 });
 
 // Update existing item
-router.post('/items/:id', isAuthenticated, csrfProtection, (req, res) => {
-  upload(req, res, async (err) => {
-    try {
-      const { itemNumber, itemName, description, discountPercent, stock, unitPrice, status } = req.body;
+router.post('/items/:id', isAuthenticated, csrfProtection, async (req, res) => {
+  try {
+    const { itemNumber, itemName, description, discountPercent, stock, unitPrice, status } = req.body;
 
-      if (!itemNumber || !itemName || !unitPrice) {
-        return res.redirect('/items?error=Item number, name, and unit price are required');
-      }
-
-      if (isNaN(discountPercent) || isNaN(stock) || isNaN(unitPrice)) {
-        return res.redirect('/items?error=Discount, stock, and price must be numbers');
-      }
-
-      if (unitPrice <= 0) {
-        return res.redirect('/items?error=Unit price must be greater than 0');
-      }
-
-      if (err) {
-        const message = err.code === 'LIMIT_FILE_SIZE' 
-          ? 'Image file size too large (max 5MB)' 
-          : err.message;
-        return res.redirect(`/items?error=${encodeURIComponent(message)}`);
-      }
-
-      const updateData = {
-        itemNumber,
-        itemName,
-        description,
-        discountPercent: parseFloat(discountPercent) || 0,
-        stock: parseInt(stock) || 0,
-        unitPrice: parseFloat(unitPrice),
-        status: status || 'Active',
-        updatedBy: req.session.user._id,
-        updatedAt: Date.now()
-      };
-
-      if (req.file) {
-        updateData.imagePath = `/uploads/items/${req.file.filename}`;
-      }
-
-      await Item.findByIdAndUpdate(req.params.id, updateData);
-      res.redirect(`/items?success=${encodeURIComponent(`Item "${itemName}" updated successfully`)}`);
-    } catch (error) {
-      console.error(error);
-      res.redirect('/items?error=Failed to update item');
+    if (!itemNumber || !itemName || !unitPrice) {
+      return res.redirect('/items?error=Item number, name, and unit price are required');
     }
-  });
+
+    if (isNaN(discountPercent) || isNaN(stock) || isNaN(unitPrice)) {
+      return res.redirect('/items?error=Discount, stock, and price must be numbers');
+    }
+
+    if (unitPrice <= 0) {
+      return res.redirect('/items?error=Unit price must be greater than 0');
+    }
+
+    const updateData = {
+      itemNumber,
+      itemName,
+      description,
+      discountPercent: parseFloat(discountPercent) || 0,
+      stock: parseInt(stock) || 0,
+      unitPrice: parseFloat(unitPrice),
+      status: status || 'Active',
+      updatedBy: req.session.user._id,
+      updatedAt: Date.now()
+    };
+
+    await Item.findByIdAndUpdate(req.params.id, updateData);
+    res.redirect(`/items?success=${encodeURIComponent(`Item "${itemName}" updated successfully`)}`);
+  } catch (error) {
+    console.error(error);
+    res.redirect('/items?error=Failed to update item');
+  }
 });
 
 // Toggle item status (Active/Inactive)

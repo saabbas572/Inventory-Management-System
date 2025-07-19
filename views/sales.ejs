@@ -19,16 +19,22 @@
   <% } %>
   
   <form id="saleForm" method="POST" action="/sales">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">  <!-- CSRF token -->
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" id="saleId" name="id">
-    
+
     <div class="form-row">
       <div class="form-group col-md-4">
         <label for="itemNumber">Item Number*</label>
         <select class="form-control" id="itemNumber" name="itemNumber" required>
           <option value="">Select Item</option>
           <% items.forEach(item => { %>
-            <option value="<%= item.itemNumber %>" data-name="<%= item.itemName %>" data-price="<%= item.unitPrice %>"><%= item.itemNumber %> - <%= item.itemName %></option>
+            <option 
+              value="<%= item.itemNumber %>" 
+              data-name="<%= item.itemName %>" 
+              data-price="<%= item.unitPrice %>" 
+              data-discount="<%= item.discountPercent %>">
+              <%= item.itemNumber %> - <%= item.itemName %>
+            </option>
           <% }); %>
         </select>
       </div>
@@ -37,7 +43,11 @@
         <select class="form-control" id="customerId" name="customerId" required>
           <option value="">Select Customer</option>
           <% customers.forEach(customer => { %>
-            <option value="<%= customer._id %>" data-name="<%= customer.fullName %>"><%= customer.customerId %> - <%= customer.fullName %></option>
+            <option 
+              value="<%= customer._id %>" 
+              data-name="<%= customer.fullName %>">
+              <%= customer.customerId %> - <%= customer.fullName %>
+            </option>
           <% }); %>
         </select>
       </div>
@@ -46,7 +56,7 @@
         <input type="date" class="form-control" id="saleDate" name="saleDate" required>
       </div>
     </div>
-    
+
     <div class="form-row">
       <div class="form-group col-md-6">
         <label for="itemName">Item Name*</label>
@@ -57,31 +67,38 @@
         <input type="text" class="form-control" id="customerName" name="customerName" readonly required>
       </div>
     </div>
-    
-    <div class="form-row">
+
+    <div class="form-row align-items-end">
       <div class="form-group col-md-4">
         <label for="quantity">Quantity*</label>
         <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
       </div>
-      <div class="form-group col-md-4">
+      <div class="form-group col-md-4 position-relative">
         <label for="unitPrice">Unit Price*</label>
-        <input type="number" class="form-control" id="unitPrice" name="unitPrice" min="0" step="0.01" required>
+        <input type="number" class="form-control" id="unitPrice" name="unitPrice" min="0" step="0.01" readonly required>
+        <small id="discountPercent" class="form-text text-muted" style="white-space: nowrap;"></small>
       </div>
       <div class="form-group col-md-4">
         <label for="total">Total</label>
         <input type="number" class="form-control" id="total" name="total" readonly>
       </div>
     </div>
-    
+
+    <!-- Apply Discount Checkbox -->
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="applyDiscount" name="applyDiscount">
+      <label class="form-check-label" for="applyDiscount">Apply Discount</label>
+    </div>
+
     <div class="form-group">
       <button type="submit" class="btn btn-primary" id="addBtn">Add Sale</button>
       <button type="button" class="btn btn-secondary" id="updateBtn" style="display:none;">Update</button>
       <button type="reset" class="btn btn-light">Clear</button>
     </div>
   </form>
-  
+
   <hr>
-  
+
   <h3>Sale List</h3>
   <table class="table table-striped">
     <thead>
@@ -108,7 +125,6 @@
           <td><%= sale.total.toFixed(2) %></td>
           <td>
             <button class="btn btn-sm btn-info edit-btn" data-id="<%= sale._id %>">Edit</button>
-            
             <form action="/sales/delete/<%= sale._id %>" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete sale <%= sale.saleId %>?');">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit" class="btn btn-sm btn-danger">Delete</button>
@@ -121,31 +137,58 @@
 </div>
 
 <script>
+  const itemNumber = document.getElementById('itemNumber');
+  const customerId = document.getElementById('customerId');
+  const itemName = document.getElementById('itemName');
+  const customerName = document.getElementById('customerName');
+  const quantity = document.getElementById('quantity');
+  const unitPrice = document.getElementById('unitPrice');
+  const applyDiscount = document.getElementById('applyDiscount');
+  const total = document.getElementById('total');
+  const discountPercentLabel = document.getElementById('discountPercent');
+
   function calculateTotal() {
-    const quantity = parseFloat(document.getElementById('quantity').value) || 0;
-    const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
-    document.getElementById('total').value = (quantity * unitPrice).toFixed(2);
+    const qty = parseFloat(quantity.value) || 0;
+    const originalPrice = parseFloat(unitPrice.dataset.original) || 0;
+    const discount = parseFloat(unitPrice.dataset.discount) || 0;
+    const discountApplied = applyDiscount.checked;
+
+    let finalPrice = originalPrice;
+    if (discountApplied && discount > 0) {
+      finalPrice = originalPrice * (1 - discount / 100);
+    }
+
+    total.value = (qty * finalPrice).toFixed(2);
+    // unitPrice.value remains original price (unchanged)
   }
-  
-  document.getElementById('quantity').addEventListener('input', calculateTotal);
-  document.getElementById('unitPrice').addEventListener('input', calculateTotal);
-  
-  document.getElementById('itemNumber').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    document.getElementById('itemName').value = selectedOption.getAttribute('data-name') || '';
-    document.getElementById('unitPrice').value = selectedOption.getAttribute('data-price') || 0;
+
+  itemNumber.addEventListener('change', () => {
+    const selected = itemNumber.options[itemNumber.selectedIndex];
+    const name = selected.getAttribute('data-name') || '';
+    const price = parseFloat(selected.getAttribute('data-price')) || 0;
+    const discount = parseFloat(selected.getAttribute('data-discount')) || 0;
+
+    itemName.value = name;
+    unitPrice.value = price.toFixed(2);
+    unitPrice.dataset.original = price;
+    unitPrice.dataset.discount = discount;
+
+    discountPercentLabel.textContent = discount > 0 ? `Discount: ${discount.toFixed(2)}%` : '';
+
     calculateTotal();
   });
-  
-  document.getElementById('customerId').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    document.getElementById('customerName').value = selectedOption.getAttribute('data-name') || '';
+
+  customerId.addEventListener('change', () => {
+    const selected = customerId.options[customerId.selectedIndex];
+    customerName.value = selected.getAttribute('data-name') || '';
   });
-  
-  // Set today's date as default
+
+  quantity.addEventListener('input', calculateTotal);
+  applyDiscount.addEventListener('change', calculateTotal);
+
   document.getElementById('saleDate').valueAsDate = new Date();
-  
-  // Handle edit buttons
+
+  // Edit buttons
   document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const saleId = this.getAttribute('data-id');
@@ -153,30 +196,48 @@
         .then(res => res.json())
         .then(sale => {
           document.getElementById('saleId').value = sale._id;
-          document.getElementById('itemNumber').value = sale.itemNumber;
-          document.getElementById('customerId').value = sale.customerId;
+          itemNumber.value = sale.itemNumber;
+          itemNumber.dispatchEvent(new Event('change')); // Update item details
+
+          customerId.value = sale.customerId;
+          customerId.dispatchEvent(new Event('change')); // Update customer name
+
           document.getElementById('saleDate').value = sale.saleDate.split('T')[0];
-          document.getElementById('itemName').value = sale.itemName;
-          document.getElementById('customerName').value = sale.customerName;
-          document.getElementById('quantity').value = sale.quantity;
-          document.getElementById('unitPrice').value = sale.unitPrice;
-          document.getElementById('total').value = sale.total;
-          
+          quantity.value = sale.quantity;
+
+          // Set discount checkbox according to sale.discountPercent > 0
+          applyDiscount.checked = sale.discountPercent > 0;
+
+          // Show original price in unitPrice field
+          // Calculate original price from unitPrice and discountPercent if discount applied
+          const discountedPrice = sale.unitPrice;
+          const discountPercent = sale.discountPercent || 0;
+          let originalPrice = discountedPrice;
+          if (discountPercent > 0) {
+            originalPrice = discountedPrice / (1 - discountPercent / 100);
+          }
+          unitPrice.value = originalPrice.toFixed(2);
+          unitPrice.dataset.original = originalPrice;
+          unitPrice.dataset.discount = discountPercent;
+
+          discountPercentLabel.textContent = discountPercent > 0 ? `Discount: ${discountPercent.toFixed(2)}%` : '';
+
+          calculateTotal();
+
           document.getElementById('addBtn').style.display = 'none';
           document.getElementById('updateBtn').style.display = 'inline-block';
         });
     });
   });
-  
-  // Update button submits the form to update route
-  document.getElementById('updateBtn').addEventListener('click', function() {
+
+  // Update button click - submits form to /sales/:id
+  document.getElementById('updateBtn').addEventListener('click', () => {
     const form = document.getElementById('saleForm');
     form.action = `/sales/${document.getElementById('saleId').value}`;
-    form.method = 'POST'; // Your backend uses POST for update
-    
-    // Submit form
+    form.method = 'POST';
     form.submit();
   });
+
 </script>
 
 <%- include('partials/footer') %>

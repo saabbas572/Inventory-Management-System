@@ -1,3 +1,228 @@
+/**
+ * @swagger
+ * tags:
+ *   name: Sales
+ *   description: Sales management
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Sale:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The auto-generated ID of the sale
+ *         saleId:
+ *           type: string
+ *           description: The human-readable sale ID (e.g., SALE0001)
+ *         saleDate:
+ *           type: string
+ *           format: date
+ *         itemNumber:
+ *           type: string
+ *         itemName:
+ *           type: string
+ *         customerId:
+ *           type: string
+ *         customerName:
+ *           type: string
+ *         quantity:
+ *           type: integer
+ *         unitPrice:
+ *           type: number
+ *           format: float
+ *         total:
+ *           type: number
+ *           format: float
+ *         discountPercent:
+ *           type: number
+ *           format: float
+ *         createdBy:
+ *           type: string
+ *           description: ID of the user who created the sale
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - saleId
+ *         - saleDate
+ *         - itemNumber
+ *         - customerId
+ *         - quantity
+ *         - unitPrice
+ *         - total
+ *   securitySchemes:
+ *     sessionAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: connect.sid
+ */
+
+/**
+ * @swagger
+ * /sales:
+ *   get:
+ *     summary: Get list of all sales
+ *     tags: [Sales]
+ *     responses:
+ *       200:
+ *         description: HTML page with sales list
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       302:
+ *         description: Redirect to dashboard if error occurs
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /sales:
+ *   post:
+ *     summary: Create a new sale
+ *     tags: [Sales]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               itemNumber:
+ *                 type: string
+ *                 description: Item number being sold
+ *               customerId:
+ *                 type: string
+ *                 description: Customer ID
+ *               saleDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Date of sale (YYYY-MM-DD)
+ *               quantity:
+ *                 type: integer
+ *                 description: Quantity sold
+ *               unitPrice:
+ *                 type: number
+ *                 format: float
+ *                 description: Price per unit
+ *               applyDiscount:
+ *                 type: string
+ *                 description: Whether to apply discount ('on' or omitted)
+ *               _csrf:
+ *                 type: string
+ *                 description: CSRF token
+ *             required:
+ *               - itemNumber
+ *               - customerId
+ *               - saleDate
+ *               - quantity
+ *               - unitPrice
+ *               - _csrf
+ *     responses:
+ *       302:
+ *         description: Redirect to sales list
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *               example: /sales
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /sales/{id}:
+ *   post:
+ *     summary: Update a sale
+ *     tags: [Sales]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Sale ID to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               itemNumber:
+ *                 type: string
+ *               customerId:
+ *                 type: string
+ *               saleDate:
+ *                 type: string
+ *               quantity:
+ *                 type: integer
+ *               unitPrice:
+ *                 type: number
+ *               _csrf:
+ *                 type: string
+ *             required:
+ *               - itemNumber
+ *               - customerId
+ *               - saleDate
+ *               - quantity
+ *               - unitPrice
+ *               - _csrf
+ *     responses:
+ *       302:
+ *         description: Redirect to sales list
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *               example: /sales
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /sales/delete/{id}:
+ *   post:
+ *     summary: Delete a sale
+ *     tags: [Sales]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Sale ID to delete
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               _csrf:
+ *                 type: string
+ *     responses:
+ *       302:
+ *         description: Redirect to sales list
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *               example: /sales
+ *     security:
+ *       - sessionAuth: []
+ */
+
 const express = require('express');
 const router = express.Router();
 const Sale = require('../models/Sale');
@@ -40,65 +265,73 @@ router.get('/sales/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-// Add new sale - POST /sales
 router.post('/sales', isAuthenticated, async (req, res) => {
-  const { itemNumber, customerId, saleDate, quantity, unitPrice } = req.body;
-  
   try {
-    // Validate required fields
-    if (!itemNumber || !customerId || !saleDate || !quantity || !unitPrice) {
-      req.flash('error', 'All fields are required');
-      return res.redirect('/sales');
-    }
+    const {
+      itemNumber,
+      customerId,
+      saleDate,
+      quantity,
+      unitPrice,
+      applyDiscount
+    } = req.body;
 
     const parsedQuantity = parseInt(quantity);
     const parsedUnitPrice = parseFloat(unitPrice);
 
-    if (isNaN(parsedQuantity) ){
-      req.flash('error', 'Invalid quantity value');
+    if (!itemNumber || !customerId || !saleDate || !quantity || !unitPrice) {
+      req.flash('error', 'All fields are required');
+      return res.redirect('/sales');
+    }
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      req.flash('error', 'Invalid quantity');
+      return res.redirect('/sales');
+    }
+    if (isNaN(parsedUnitPrice) || parsedUnitPrice <= 0) {
+      req.flash('error', 'Invalid unit price');
       return res.redirect('/sales');
     }
 
-    if (isNaN(parsedUnitPrice)) {
-      req.flash('error', 'Invalid unit price value');
-      return res.redirect('/sales');
-    }
-
-    if (parsedQuantity <= 0) {
-      req.flash('error', 'Quantity must be greater than zero');
-      return res.redirect('/sales');
-    }
-
-    if (parsedUnitPrice <= 0) {
-      req.flash('error', 'Unit price must be greater than zero');
-      return res.redirect('/sales');
-    }
-
-    // Check item & customer existence
     const item = await Item.findOne({ itemNumber });
     if (!item) {
-      req.flash('error', `Item with number ${itemNumber} not found`);
+      req.flash('error', `Item not found with number ${itemNumber}`);
       return res.redirect('/sales');
     }
 
-    const customer = await Customer.findById(customerId);
+const customer = await Customer.findOne({ _id: customerId });
     if (!customer) {
       req.flash('error', 'Customer not found');
       return res.redirect('/sales');
     }
 
-    // Check stock availability
     if (item.stock < parsedQuantity) {
       req.flash('error', `Insufficient stock. Only ${item.stock} available`);
       return res.redirect('/sales');
     }
 
-    // Generate sale ID
+    let discountPercent = 0;
+    let finalUnitPrice = parsedUnitPrice;
+
+    if (applyDiscount === 'on') {
+      discountPercent = item.discountPercent || 0;
+      finalUnitPrice = parsedUnitPrice * (1 - discountPercent / 100);
+    }
+
+    const total = parsedQuantity * finalUnitPrice;
+
     const count = await Sale.countDocuments();
-    const saleId = `SALE${(count + 1).toString().padStart(4, '0')}`;
+    // Generate sale ID safely by getting max existing saleId
+const lastSale = await Sale.findOne().sort({ saleId: -1 }).exec();
 
-    const total = parsedQuantity * parsedUnitPrice;
+let nextNumber = 1;
+if (lastSale && lastSale.saleId) {
+  const match = lastSale.saleId.match(/SALE(\d+)/);
+  if (match) {
+    nextNumber = parseInt(match[1], 10) + 1;
+  }
+}
 
+const saleId = `SALE${nextNumber.toString().padStart(4, '0')}`;
     const sale = new Sale({
       saleId,
       saleDate,
@@ -107,25 +340,27 @@ router.post('/sales', isAuthenticated, async (req, res) => {
       customerId,
       customerName: customer.fullName,
       quantity: parsedQuantity,
-      unitPrice: parsedUnitPrice,
+      unitPrice: finalUnitPrice,
       total,
+      discountPercent,
       createdBy: req.session.user._id
     });
 
     await sale.save();
 
-    // Update item stock
+    // Decrease stock
     item.stock -= parsedQuantity;
     await item.save();
 
     req.flash('success', `Sale #${saleId} recorded successfully`);
     res.redirect('/sales');
   } catch (err) {
-    console.error('Error creating sale:', err);
+    console.error(err);
     req.flash('error', 'Failed to record sale');
     res.redirect('/sales');
   }
 });
+
 
 // Update existing sale - POST /sales/:id
 router.post('/sales/:id', isAuthenticated, async (req, res) => {

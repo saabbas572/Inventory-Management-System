@@ -3,6 +3,33 @@ const router = express.Router();
 const Customer = require('../models/Customer');
 const { isAuthenticated } = require('../middleware/auth');
 
+/**
+ * @swagger
+ * /customers:
+ *   get:
+ *     summary: Get all customers
+ *     tags: [Customers]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Active, Inactive]
+ *         description: Filter by customer status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by name, email, phone, or city
+ *     responses:
+ *       200:
+ *         description: Rendered list of customers
+ *       302:
+ *         description: Redirect to dashboard on error
+ */
+
 // GET: Render all customers
 router.get('/customers', isAuthenticated, async (req, res) => {
   try {
@@ -40,6 +67,30 @@ router.get('/customers', isAuthenticated, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /customers/{id}:
+ *   get:
+ *     summary: Get customer by ID
+ *     tags: [Customers]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Customer ID
+ *     responses:
+ *       200:
+ *         description: Customer object in JSON
+ *       404:
+ *         description: Customer not found
+ *       500:
+ *         description: Server error
+ */
+
 // GET: Customer JSON for edit
 router.get('/customers/:id', isAuthenticated, async (req, res) => {
   try {
@@ -52,6 +103,50 @@ router.get('/customers/:id', isAuthenticated, async (req, res) => {
     res.status(500).json({ error: 'Failed to load customer' });
   }
 });
+
+/**
+ * @swagger
+ * /customers:
+ *   post:
+ *     summary: Add a new customer
+ *     tags: [Customers]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - phoneMobile
+ *               - address
+ *               - _csrf
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               phoneMobile:
+ *                 type: string
+ *               phone2:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               address2:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               district:
+ *                 type: string
+ *               _csrf:
+ *                 type: string
+ *                 description: CSRF token
+ *     responses:
+ *       302:
+ *         description: Redirect with flash message
+ */
 
 // POST: Add new customer
 router.post('/customers', isAuthenticated, async (req, res) => {
@@ -130,6 +225,57 @@ router.post('/customers', isAuthenticated, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /customers/{id}:
+ *   post:
+ *     summary: Update customer by ID
+ *     tags: [Customers]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Customer ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - phoneMobile
+ *               - address
+ *               - _csrf
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               phoneMobile:
+ *                 type: string
+ *               phone2:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               address2:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               district:
+ *                 type: string
+ *               _csrf:
+ *                 type: string
+ *                 description: CSRF token
+ *     responses:
+ *       302:
+ *         description: Redirect with flash message
+ */
+
 // POST: Update customer
 router.post('/customers/:id', isAuthenticated, async (req, res) => {
   try {
@@ -163,6 +309,36 @@ router.post('/customers/:id', isAuthenticated, async (req, res) => {
     res.redirect('/customers');
   }
 });
+
+/**
+ * @swagger
+ * /customers/delete/{id}:
+ *   post:
+ *     summary: Delete customer by ID
+ *     tags: [Customers]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Customer ID to delete
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               _csrf:
+ *                 type: string
+ *                 description: CSRF token
+ *     responses:
+ *       302:
+ *         description: Redirect with flash message
+ */
 
 // POST: Delete customer
 router.post('/customers/delete/:id', isAuthenticated, async (req, res) => {

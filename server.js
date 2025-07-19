@@ -9,9 +9,13 @@ const MongoStore = require('connect-mongo');
 // Add this with your other route imports
 const reportsRoutes = require('./routes/reports');
 
+const swaggerSpec = require('./swagger');
+const swaggerUi = require('swagger-ui-express');
+
 const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
+
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/inventory_system', {
@@ -44,9 +48,34 @@ app.use(session({
 // Flash messages (requires session)
 app.use(flash());
 
+
+
 // CSRF protection (requires session)
 const csrfProtection = csrf();
 app.use(csrfProtection);
+// Apply CSRF protection to all routes except Swagger UI
+app.use((req, res, next) => {
+
+  // Only log on the first request after server start
+  if (!app.locals.hasShownInitialCsrf) {
+    console.log('\n=== Initial CSRF Token ===');
+    console.log('CSRF Token:', req.csrfToken());
+    console.log('=========================\n');
+    app.locals.hasShownInitialCsrf = true;
+  }
+  // List of paths to exclude from CSRF protection
+  const excludedPaths = [
+    '/api-docs',
+    '/api-docs.json',
+    '/api-docs.yaml',
+    // Add any other API paths that shouldn't have CSRF
+  ];
+
+  if (excludedPaths.some(path => req.path.startsWith(path))) {
+    return next();
+  }
+  csrfProtection(req, res, next);
+});
 
 // View engine setup
 app.set('view engine', 'ejs');
@@ -76,6 +105,7 @@ res.locals.successMessage = req.flash('success') || [];
   next();
 });
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes - mount dashboardRoutes first so /dashboard is handled there
 app.use('/', dashboardRoutes);

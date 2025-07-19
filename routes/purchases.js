@@ -1,3 +1,274 @@
+/**
+ * @swagger
+ * tags:
+ *   name: Purchases
+ *   description: Purchase management endpoints
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Purchase:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The auto-generated ID of the purchase
+ *         purchaseId:
+ *           type: string
+ *           description: The human-readable purchase ID
+ *         purchaseDate:
+ *           type: string
+ *           format: date
+ *         itemNumber:
+ *           type: string
+ *         itemName:
+ *           type: string
+ *         vendor:
+ *           type: string
+ *           description: Reference to Vendor
+ *         quantity:
+ *           type: integer
+ *         unitPrice:
+ *           type: number
+ *           format: float
+ *         totalCost:
+ *           type: number
+ *           format: float
+ *         createdBy:
+ *           type: string
+ *           description: Reference to User who created
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - purchaseId
+ *         - purchaseDate
+ *         - itemNumber
+ *         - vendor
+ *         - quantity
+ *         - unitPrice
+ *   securitySchemes:
+ *     sessionAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: connect.sid
+ */
+
+/**
+ * @swagger
+ * /purchases:
+ *   get:
+ *     summary: Get list of purchases with filtering options
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering (YYYY-MM-DD)
+ *       - in: query
+ *         name: vendorId
+ *         schema:
+ *           type: string
+ *         description: Vendor ID to filter by
+ *     responses:
+ *       200:
+ *         description: HTML page with purchases list
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       302:
+ *         description: Redirect to dashboard if error occurs
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /purchases/{id}:
+ *   get:
+ *     summary: Get details of a specific purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Purchase ID
+ *     responses:
+ *       200:
+ *         description: HTML page with purchase details
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       302:
+ *         description: Redirect to purchases list if error occurs
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /purchases/{id}/edit:
+ *   get:
+ *     summary: Get edit form for a purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Purchase ID
+ *     responses:
+ *       200:
+ *         description: HTML edit form
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       302:
+ *         description: Redirect to purchases list if error occurs
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /purchases:
+ *   post:
+ *     summary: Create a new purchase
+ *     tags: [Purchases]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               itemNumber:
+ *                 type: string
+ *               vendorId:
+ *                 type: string
+ *               purchaseDate:
+ *                 type: string
+ *                 format: date
+ *               quantity:
+ *                 type: integer
+ *               unitPrice:
+ *                 type: number
+ *                 format: float
+ *               _csrf:
+ *                 type: string
+ *             required:
+ *               - itemNumber
+ *               - vendorId
+ *               - purchaseDate
+ *               - quantity
+ *               - unitPrice
+ *     responses:
+ *       302:
+ *         description: Redirect to purchases list
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *               example: /purchases
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /purchases/{id}/update:
+ *   post:
+ *     summary: Update a purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Purchase ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               quantity:
+ *                 type: integer
+ *               unitPrice:
+ *                 type: number
+ *                 format: float
+ *               _csrf:
+ *                 type: string
+ *             required:
+ *               - quantity
+ *               - unitPrice
+ *     responses:
+ *       302:
+ *         description: Redirect to purchases list
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *               example: /purchases
+ *     security:
+ *       - sessionAuth: []
+ */
+
+/**
+ * @swagger
+ * /purchases/{id}/delete:
+ *   post:
+ *     summary: Delete a purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Purchase ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               _csrf:
+ *                 type: string
+ *     responses:
+ *       302:
+ *         description: Redirect to purchases list
+ *         headers:
+ *           Location:
+ *             schema:
+ *               type: string
+ *               example: /purchases
+ *     security:
+ *       - sessionAuth: []
+ */
+
 const express = require('express');
 const router = express.Router();
 const Purchase = require('../models/Purchase');
