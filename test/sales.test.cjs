@@ -1,57 +1,110 @@
 const request = require('supertest');
 const express = require('express');
 const session = require('express-session');
-const flash = require('connect-flash');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const flash = require('connect-flash');
 
-// Mock middleware to simulate authentication
+jest.mock('../models/Sale', () => {
+  class MockSale {
+    constructor(data) {
+      Object.assign(this, data);
+    }
+    save() {
+      return Promise.resolve(this);
+    }
+  }
+
+  MockSale.find = jest.fn().mockReturnThis();
+  MockSale.findById = jest.fn().mockReturnThis();
+  MockSale.findOne = jest.fn().mockReturnThis();
+  MockSale.findByIdAndUpdate = jest.fn().mockReturnThis();
+  MockSale.findByIdAndDelete = jest.fn().mockReturnThis();
+  MockSale.countDocuments = jest.fn().mockResolvedValue(0);
+  MockSale.sort = jest.fn().mockReturnThis();
+  MockSale.lean = jest.fn().mockResolvedValue({});
+
+  return MockSale;
+});
+
+
+jest.mock('../models/Item', () => {
+  function MockItem(data) {
+    Object.assign(this, data);
+    this.save = jest.fn().mockImplementation(function () {
+      return Promise.resolve(this);
+    });
+  }
+
+  MockItem.find = jest.fn();
+  MockItem.findOne = jest.fn();
+  MockItem.sort = jest.fn();
+  MockItem.lean = jest.fn();
+
+  return MockItem;
+});
+
+jest.mock('../models/Customer', () => {
+  function MockCustomer(data) {
+    Object.assign(this, data);
+  }
+
+  MockCustomer.find = jest.fn();
+  MockCustomer.findOne = jest.fn();
+  MockCustomer.sort = jest.fn();
+  MockCustomer.lean = jest.fn();
+
+  return MockCustomer;
+});
+
+// Mock auth middleware
 jest.mock('../middleware/auth', () => ({
   isAuthenticated: (req, res, next) => {
-    req.session.user = { _id: 'user123' };
+    req.session.user = { _id: 'user123', username: 'testuser' };
     next();
   }
 }));
 
-// Mock models
-jest.mock('../models/Sale');
-jest.mock('../models/Item');
-jest.mock('../models/Customer');
-
-const Sale = require('../models/Sale');
-const Item = require('../models/Item');
-const Customer = require('../models/Customer');
-
-const router = require('../routes/sales');
+// Mock csurf middleware
+jest.mock('csurf', () => () => (req, res, next) => {
+  req.csrfToken = () => 'mock-csrf-token';
+  next();
+});
 
 describe('Sales Router', () => {
   let app;
   let mongoServer;
+  let Sale, Item, Customer;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     await mongoose.connect(mongoServer.getUri(), { dbName: 'test' });
 
+    Sale = require('../models/Sale');
+    Item = require('../models/Item');
+    Customer = require('../models/Customer');
+
     app = express();
     app.use(express.urlencoded({ extended: false }));
-    app.use(session({ secret: 'testsecret', resave: false, saveUninitialized: false }));
+    app.use(session({
+      secret: 'test',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: false }
+    }));
     app.use(flash());
 
-    // Mock req.flash to be noop and res.render to return json
+    // Mock CSRF protection
+    const csrf = require('csurf');
+    app.use(csrf({ cookie: false }));
+
+    // Mock render function to respond with JSON
     app.use((req, res, next) => {
-      req.flash = jest.fn((type, msg) => {
-        if (msg) {
-          req.session[type] = msg;
-        }
-        return req.session[type] || [];
-      });
       res.render = (view, options) => res.status(200).json(options);
-      // Mock csrf token function
-      req.csrfToken = () => 'mock-csrf-token';
       next();
     });
 
-    app.use('/', router);
+    app.use(require('../routes/sales'));
   });
 
   afterAll(async () => {
@@ -63,110 +116,216 @@ describe('Sales Router', () => {
     jest.clearAllMocks();
   });
 
-  test('GET /sales should render sales page with data', async () => {
-    Sale.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([{ saleId: 'SALE0001' }]) });
-    Item.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([{ itemName: 'Test Item' }]) });
-    Customer.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([{ fullName: 'John Doe' }]) });
+  describe('GET /sales', () => {
+    test('should render sales page with sales data', async () => {
+  const mockSales = [{ saleId: 'SALE0001', itemName: 'Test Item' }];
+  const mockItems = [{ itemName: 'Test Item', itemNumber: 'ITEM001', status: 'Active' }];
+  const mockCustomers = [{ fullName: 'Test Customer', _id: 'cust123', status: 'Active' }];
 
-    const res = await request(app).get('/sales');
+  Sale.find.mockImplementation(() => ({
+    sort: jest.fn().mockResolvedValue(mockSales),  // resolve array directly
+  }));
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.sales.length).toBe(1);
-    expect(res.body.items.length).toBe(1);
-    expect(res.body.customers.length).toBe(1);
-    expect(res.body.csrfToken).toBe('mock-csrf-token');
+  Item.find.mockImplementation(() => ({
+    sort: jest.fn().mockResolvedValue(mockItems),
+  }));
+
+  Customer.find.mockImplementation(() => ({
+    sort: jest.fn().mockResolvedValue(mockCustomers),
+  }));
+
+  const res = await request(app).get('/sales');
+
+  expect(res.status).toBe(200);
+  expect(res.body.sales).toEqual(mockSales);
+  expect(res.body.items).toEqual(mockItems);
+  expect(res.body.customers).toEqual(mockCustomers);
+  expect(res.body.csrfToken).toBe('mock-csrf-token');
+  expect(res.body.user).toEqual({ _id: 'user123', username: 'testuser' });
+});
+
+
+    test('should handle database errors', async () => {
+      Sale.find.mockImplementation(() => { throw new Error('DB Error'); });
+
+      const res = await request(app).get('/sales');
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/dashboard');
+    });
   });
 
-  test('GET /sales/:id returns sale JSON', async () => {
-    Sale.findById.mockResolvedValue({ _id: 'sale123', saleId: 'SALE0001' });
+  describe('GET /sales/:id', () => {
+  test('should return sale JSON data', async () => {
+    const mockSale = { 
+      _id: 'sale123', 
+      saleId: 'SALE0001',
+      itemName: 'Test Item'
+    };
+
+    Sale.findById.mockResolvedValue(mockSale);
 
     const res = await request(app).get('/sales/sale123');
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.saleId).toBe('SALE0001');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(mockSale);
   });
 
-  test('GET /sales/:id returns 404 if sale not found', async () => {
+  test('should return 404 for non-existent sale', async () => {
     Sale.findById.mockResolvedValue(null);
 
-    const res = await request(app).get('/sales/nonexistent');
+    const res = await request(app).get('/sales/invalid123');
 
-    expect(res.statusCode).toBe(404);
+    expect(res.status).toBe(404);
     expect(res.body.error).toBe('Sale not found');
   });
+});
 
-  test('POST /sales creates a new sale', async () => {
-  // Mock Item.findOne to resolve with an object that has a mocked save method
-  const saveMock = jest.fn().mockResolvedValue(true);
-  Item.findOne.mockResolvedValue({
-    itemName: 'Test Item',
-    stock: 10,
-    save: saveMock
-  });
 
-  Customer.findById.mockResolvedValue({ fullName: 'John Doe' });
-  Sale.countDocuments.mockResolvedValue(0);
-  Sale.prototype.save = jest.fn().mockResolvedValue();
-
-  const res = await request(app)
-    .post('/sales')
-    .send({
+  describe('POST /sales', () => {
+    const validSale = {
       itemNumber: 'ITEM001',
       customerId: 'cust123',
       saleDate: '2023-01-01',
-      quantity: 5,
-      unitPrice: 10
-    });
+      quantity: '2',
+      unitPrice: '100',
+      _csrf: 'mock-csrf-token'
+    };
 
-  expect(res.statusCode).toBe(302);
+    test('should create new sale with valid data', async () => {
+  const mockItem = {
+    itemName: 'Test Item',
+    itemNumber: 'ITEM001',
+    stock: 10,
+    discountPercent: 10,
+    save: jest.fn().mockResolvedValue(true)
+  };
+  const mockCustomer = { fullName: 'Test Customer' };
+
+  Item.findOne.mockResolvedValue(mockItem);
+  Customer.findOne.mockResolvedValue(mockCustomer);
+  Sale.findOne.mockReturnValue({
+    sort: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue({ saleId: 'SALE0000' })
+  });
+
+  // Spy on Sale.prototype.save to verify it's called
+  const saveSpy = jest.spyOn(Sale.prototype, 'save').mockResolvedValue();
+
+  const res = await request(app)
+    .post('/sales')
+    .type('form')
+    .send(validSale);
+
+  expect(res.status).toBe(302);
   expect(res.header.location).toBe('/sales');
+  expect(mockItem.stock).toBe(8); // 10 - 2
+  expect(mockItem.save).toHaveBeenCalled();
+  expect(saveSpy).toHaveBeenCalled();
+
+  saveSpy.mockRestore();
 });
 
-  test('POST /sales rejects missing fields', async () => {
-    const res = await request(app)
-      .post('/sales')
-      .send({
-        itemNumber: '',
-        customerId: '',
-        saleDate: '',
-        quantity: '',
-        unitPrice: ''
-      });
+    test('should reject invalid quantity', async () => {
+      const res = await request(app)
+        .post('/sales')
+        .type('form')
+        .send({
+          ...validSale,
+          quantity: '0'
+        });
 
-    expect(res.statusCode).toBe(302);
-    expect(res.header.location).toBe('/sales');
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/sales');
+    });
+
+    test('should handle insufficient stock', async () => {
+      const mockItem = {
+        itemName: 'Test Item',
+        itemNumber: 'ITEM001',
+        stock: 1,
+        save: jest.fn()
+      };
+      Item.findOne.mockResolvedValue(mockItem);
+
+      const res = await request(app)
+        .post('/sales')
+        .type('form')
+        .send({
+          ...validSale,
+          quantity: '2'
+        });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/sales');
+    });
   });
 
-  test('POST /sales/:id updates sale', async () => {
-    const sale = { quantity: 5, itemNumber: 'ITEM001' };
-    const item = { stock: 10, save: jest.fn().mockResolvedValue(true) };
+  describe('POST /sales/:id', () => {
+    const validUpdate = {
+      itemNumber: 'ITEM001',
+      customerId: 'cust123',
+      saleDate: '2023-01-01',
+      quantity: '3',
+      unitPrice: '100',
+      _csrf: 'mock-csrf-token'
+    };
 
-    Sale.findById.mockResolvedValue(sale);
-    Item.findOne.mockResolvedValue(item);
-    Sale.findByIdAndUpdate.mockResolvedValue(true);
+    test('should update sale with valid data', async () => {
+      const mockSale = {
+        _id: 'sale123',
+        itemNumber: 'ITEM001',
+        quantity: 2,
+        save: jest.fn()
+      };
+      const mockItem = {
+        itemNumber: 'ITEM001',
+        stock: 5,
+        save: jest.fn()
+      };
 
-    const res = await request(app)
-      .post('/sales/sale123')
-      .send({ quantity: 3, unitPrice: 15 });
+      Sale.findById.mockResolvedValue(mockSale);
+      Item.findOne.mockResolvedValue(mockItem);
 
-    expect(res.statusCode).toBe(302);
-    expect(res.header.location).toBe('/sales');
+      const res = await request(app)
+        .post('/sales/sale123')
+        .type('form')
+        .send(validUpdate);
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/sales');
+      expect(mockItem.stock).toBe(4); // 5 - (3-2)
+      expect(mockItem.save).toHaveBeenCalled();
+    });
   });
 
-  test('POST /sales/delete/:id deletes sale and restores stock', async () => {
-    const sale = { saleId: 'SALE0001', quantity: 5, itemNumber: 'ITEM001' };
-    const item = { stock: 10, save: jest.fn().mockResolvedValue(true) };
+  describe('POST /sales/delete/:id', () => {
+    test('should delete sale and restore stock', async () => {
+      const mockSale = {
+        _id: 'sale123',
+        saleId: 'SALE0001',
+        itemNumber: 'ITEM001',
+        quantity: 2
+      };
+      const mockItem = {
+        itemNumber: 'ITEM001',
+        stock: 5,
+        save: jest.fn()
+      };
 
-    Sale.findById.mockResolvedValue(sale);
-    Item.findOne.mockResolvedValue(item);
-    Sale.findByIdAndDelete.mockResolvedValue(true);
+      Sale.findById.mockResolvedValue(mockSale);
+      Item.findOne.mockResolvedValue(mockItem);
+      Sale.findByIdAndDelete.mockResolvedValue(mockSale);
 
-    const res = await request(app).post('/sales/delete/sale123');
+      const res = await request(app)
+        .post('/sales/delete/sale123')
+        .type('form')
+        .send({ _csrf: 'mock-csrf-token' });
 
-    expect(res.statusCode).toBe(302);
-    expect(res.header.location).toBe('/sales');
-    expect(item.stock).toBe(15); // stock increased by 5
-    expect(item.save).toHaveBeenCalled();
-    expect(Sale.findByIdAndDelete).toHaveBeenCalledWith('sale123');
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/sales');
+      expect(mockItem.stock).toBe(7); // 5 + 2
+      expect(mockItem.save).toHaveBeenCalled();
+    });
   });
 });

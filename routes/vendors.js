@@ -38,7 +38,6 @@ router.get('/vendors', isAuthenticated, async (req, res) => {
       user: req.session.user
     });
   } catch (err) {
-    console.error(err);
     req.flash('error', 'Failed to load vendors');
     res.redirect('/');
   }
@@ -159,7 +158,6 @@ router.post('/vendors', async (req, res) => {
     req.flash('success', 'Vendor added successfully');
     res.redirect('/vendors');
   } catch (err) {
-    console.error(err);
     req.flash('error', 'Failed to add vendor');
     res.redirect('/vendors');
   }
@@ -243,7 +241,6 @@ router.post('/vendors/:id', isAuthenticated, async (req, res) => {
     req.flash('success', 'Vendor updated successfully');
     res.redirect('/vendors');
   } catch (err) {
-    console.error(err);
     req.flash('error', 'Failed to update vendor');
     res.redirect('/vendors');
   }
@@ -279,7 +276,6 @@ router.post('/vendors/delete/:id', isAuthenticated, async (req, res) => {
     req.flash('success', 'Vendor deleted successfully');
     res.redirect('/vendors');
   } catch (err) {
-    console.error(err);
     req.flash('error', 'Failed to delete vendor');
     res.redirect('/vendors');
   }

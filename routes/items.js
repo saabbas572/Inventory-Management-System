@@ -36,7 +36,6 @@ router.get('/items', isAuthenticated, csrfProtection, async (req, res) => {
       csrfToken: req.csrfToken()
     });
   } catch (err) {
-    console.error(err);
     res.redirect('/items?error=Failed to load items');
   }
 });
@@ -50,10 +49,32 @@ router.get('/items/:id', isAuthenticated, async (req, res) => {
     }
     res.json(item);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Failed to fetch item' });
   }
 });
+
+
+// Toggle item status (Active <-> Inactive)
+router.post('/items/toggle-status/:id', isAuthenticated, csrfProtection, async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) {
+      return res.redirect('/items?error=Item not found');
+    }
+
+    // Toggle status
+    item.status = item.status === 'Active' ? 'Inactive' : 'Active';
+    item.updatedBy = req.session.user._id;
+    item.updatedAt = Date.now();
+
+    await item.save();
+
+    res.redirect(`/items?success=Item status changed to ${item.status}`);
+  } catch (err) {
+    res.redirect('/items?error=Failed to update item status');
+  }
+});
+
 
 // Add new item
 router.post('/items', isAuthenticated, csrfProtection, async (req, res) => {
@@ -91,7 +112,6 @@ router.post('/items', isAuthenticated, csrfProtection, async (req, res) => {
     await newItem.save();
     res.redirect(`/items?success=${encodeURIComponent(`Item "${itemName}" added successfully`)}`);
   } catch (error) {
-    console.error(error);
     res.redirect('/items?error=Failed to add item');
   }
 });
@@ -101,6 +121,7 @@ router.post('/items/:id', isAuthenticated, csrfProtection, async (req, res) => {
   try {
     const { itemNumber, itemName, description, discountPercent, stock, unitPrice, status } = req.body;
 
+    // Validation
     if (!itemNumber || !itemName || !unitPrice) {
       return res.redirect('/items?error=Item number, name, and unit price are required');
     }
@@ -125,10 +146,16 @@ router.post('/items/:id', isAuthenticated, csrfProtection, async (req, res) => {
       updatedAt: Date.now()
     };
 
-    await Item.findByIdAndUpdate(req.params.id, updateData);
+
+    const result = await Item.findByIdAndUpdate(req.params.id, updateData);
+
+
+    if (!result) {
+      return res.redirect('/items?error=Failed to update item');
+    }
+
     res.redirect(`/items?success=${encodeURIComponent(`Item "${itemName}" updated successfully`)}`);
   } catch (error) {
-    console.error(error);
     res.redirect('/items?error=Failed to update item');
   }
 });
@@ -163,7 +190,6 @@ router.post('/items/delete/:id', isAuthenticated, csrfProtection, async (req, re
 
     res.redirect(`/items?success=${encodeURIComponent(`Item "${item.itemName}" deleted successfully`)}`);
   } catch (err) {
-    console.error(err);
     res.redirect('/items?error=Failed to delete item');
   }
 });

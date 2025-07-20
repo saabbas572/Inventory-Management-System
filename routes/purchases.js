@@ -325,7 +325,6 @@ router.get('/purchases', isAuthenticated, async (req, res) => {
       errorMessage: req.flash('error')[0] || '',
     });
   } catch (err) {
-    console.error('Error loading purchases:', err);
     req.flash('error', 'Failed to load purchases');
     res.redirect('/dashboard');
   }
@@ -402,7 +401,6 @@ router.post('/purchases/:id/update', isAuthenticated, async (req, res) => {
     req.flash('success', 'Purchase updated successfully');
     res.redirect('/purchases');
   } catch (err) {
-    console.error('Error updating purchase:', err);
     req.flash('error', 'Failed to update purchase');
     res.redirect(`/purchases/${req.params.id}/edit`);
   }
@@ -440,15 +438,14 @@ router.get('/purchases/:id', isAuthenticated, async (req, res) => {
 });
 
 
-// POST: Add a new purchase
 router.post('/purchases', isAuthenticated, async (req, res) => {
   const { itemNumber, vendorId, purchaseDate, quantity, unitPrice } = req.body;
 
   try {
-    // Input validation (keep your existing code)
+
+    // Input validation
     const parsedQuantity = parseInt(quantity);
     const parsedUnitPrice = parseFloat(unitPrice);
-
     if (
       !itemNumber || !vendorId || !purchaseDate ||
       isNaN(parsedQuantity) || parsedQuantity <= 0 ||
@@ -458,7 +455,7 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
       return res.redirect('/purchases');
     }
 
-    // Check item and vendor (keep your existing code)
+    // Find item and vendor
     const item = await Item.findOne({ itemNumber });
     const vendor = await Vendor.findById(vendorId);
 
@@ -467,8 +464,9 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
       return res.redirect('/purchases');
     }
 
-    // Generate safe purchase ID
+    // Get next purchase ID
     const purchaseId = await getNextPurchaseId();
+
     const totalCost = parsedQuantity * parsedUnitPrice;
 
     const purchaseData = {
@@ -483,20 +481,21 @@ router.post('/purchases', isAuthenticated, async (req, res) => {
       createdBy: req.session.user._id,
     };
 
+
     const newPurchase = await Purchase.create(purchaseData);
 
-    // Update stock (keep your existing code)
+    // Update stock
     item.stock += parsedQuantity;
     await item.save();
 
     req.flash('success', `Purchase #${purchaseId} recorded successfully`);
     res.redirect('/purchases');
   } catch (err) {
-    console.error('Error adding purchase:', err);
     req.flash('error', 'Failed to add purchase');
     res.redirect('/purchases');
   }
 });
+
 
 // POST: Delete a purchase
 router.post('/purchases/:id/delete', isAuthenticated, async (req, res) => {
@@ -521,7 +520,6 @@ router.post('/purchases/:id/delete', isAuthenticated, async (req, res) => {
     req.flash('success', `Purchase ${purchase.purchaseId} deleted successfully`);
     res.redirect('/purchases');
   } catch (err) {
-    console.error('Error deleting purchase:', err);
     req.flash('error', 'Failed to delete purchase');
     res.redirect('/purchases');
   }

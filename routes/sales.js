@@ -245,7 +245,6 @@ router.get('/sales', isAuthenticated, async (req, res) => {
       user: req.session.user
     });
   } catch (err) {
-    console.error('Error fetching sales:', err);
     req.flash('error', 'Failed to load sales data');
     res.redirect('/dashboard');
   }
@@ -355,7 +354,6 @@ const saleId = `SALE${nextNumber.toString().padStart(4, '0')}`;
     req.flash('success', `Sale #${saleId} recorded successfully`);
     res.redirect('/sales');
   } catch (err) {
-    console.error(err);
     req.flash('error', 'Failed to record sale');
     res.redirect('/sales');
   }
@@ -411,7 +409,6 @@ router.post('/sales/:id', isAuthenticated, async (req, res) => {
     req.flash('success', 'Sale updated successfully');
     res.redirect('/sales');
   } catch (err) {
-    console.error('Error updating sale:', err);
     req.flash('error', 'Failed to update sale');
     res.redirect('/sales');
   }

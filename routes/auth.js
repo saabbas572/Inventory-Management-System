@@ -68,10 +68,23 @@ router.post('/login', async (req, res) => {
 
 // Register Page
 router.get('/register', (req, res) => {
-  res.render('register', {
-    error: req.flash('error')[0] || null,
-    csrfToken: req.csrfToken()  // <-- CSRF token sent here
-  });
+  try {
+    console.log('GET /register route hit');
+    
+    const error = req.flash('error')[0] || null;
+    const csrfToken = req.csrfToken();
+    
+    console.log('CSRF Token generated:', csrfToken);
+    console.log('Error flash message:', error);
+
+    res.render('register', {
+      error,
+      csrfToken
+    });
+  } catch (err) {
+    console.error('Error in /register route:', err);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 router.post('/register', async (req, res) => {
@@ -148,7 +161,6 @@ router.post('/register', async (req, res) => {
 router.get('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
-      console.error('Session destroy error:', err);
       return res.redirect('/dashboard');
     }
     res.clearCookie('connect.sid');

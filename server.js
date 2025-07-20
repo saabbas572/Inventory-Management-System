@@ -107,6 +107,7 @@ res.locals.successMessage = req.flash('success') || [];
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+
 // Routes - mount dashboardRoutes first so /dashboard is handled there
 app.use('/', dashboardRoutes);
 app.use('/', require('./routes/auth'));
